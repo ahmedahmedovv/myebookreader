@@ -1,0 +1,70 @@
+.reader {
+  background: #F0EEE1;
+  padding: 20px;
+  max-width: 100%;
+  margin: 0;
+  width: 100%;
+  height: 100vh;
+  overflow-y: auto;
+  box-shadow: none;
+  font-family: 'Bookerly', 'Georgia', 'Times New Roman', serif;
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+}
+
+.reader h1 {
+  font-size: 24px;
+  margin-bottom: 15px;
+  color: #4A3E2E;
+}
+
+.reader p {
+  margin-bottom: 15px;
+  color: #4A3E2E;
+  text-align: justify;
+}
+
+.reader img {
+  max-width: 100%;
+  height: auto;
+  margin: 15px 0;
+}
+
+.word {
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  transition: background-color 0.1s;
+}
+
+.word.highlighted {
+  background-color: #E8D5B7;
+  border-radius: 2px;
+}
+
+.summary-marker {
+  color: #63AE8D;
+  font-weight: 600;
+  margin: 15px 0;
+  display: block;
+  text-align: center;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+  padding: 8px;
+  border-radius: 8px;
+  transition: background-color 0.2s;
+}
+
+.summary-marker:hover {
+  background-color: #E8D5B7;
+}
+
+.summary-marker.loading {
+  color: #8B6F47;
+  font-style: italic;
+}
+

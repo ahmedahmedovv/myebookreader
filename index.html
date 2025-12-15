@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="theme-color" content="#63AE8D">
+    <link rel="manifest" href="/manifest.json">
+    <title>EPUB Reader</title>
+    <!-- Polyfills for older browsers -->
+    <script>
+        // Polyfill for Promise if needed
+        if (typeof Promise === 'undefined') {
+            document.write('<script src="https://cdn.jsdelivr.net/npm/promise-polyfill@8/dist/polyfill.min.js"><\/script>');
+        }
+        // Polyfill for fetch if needed
+        if (typeof fetch === 'undefined') {
+            document.write('<script src="https://cdn.jsdelivr.net/npm/whatwg-fetch@3.6.2/dist/fetch.umd.js"><\/script>');
+        }
+    </script>
+</head>
+<body>
+    <div id="root"></div>
+    <noscript>
+        <div style="padding: 20px; text-align: center; background: #C97D60; color: white;">
+            JavaScript is required to use this application. Please enable JavaScript in your browser settings.
+        </div>
+    </noscript>
+    <script type="module" src="/src/main.tsx"></script>
+</body>
+</html>
