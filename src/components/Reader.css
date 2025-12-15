@@ -1,5 +1,5 @@
 .reader {
-  background: #F0EEE1;
+  background: var(--bg-secondary);
   padding: 20px;
   max-width: 100%;
   margin: 0;
@@ -13,17 +13,18 @@
   left: 0;
   right: 0;
   bottom: 0;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 .reader h1 {
   font-size: 24px;
   margin-bottom: 15px;
-  color: #4A3E2E;
+  color: var(--text-primary);
 }
 
 .reader p {
   margin-bottom: 15px;
-  color: #4A3E2E;
+  color: var(--text-primary);
   text-align: justify;
 }
 
@@ -31,6 +32,38 @@
   max-width: 100%;
   height: auto;
   margin: 15px 0;
+}
+
+/* EPUB content styling for dark mode */
+.reader * {
+  color: inherit;
+}
+
+.reader h1,
+.reader h2,
+.reader h3,
+.reader h4,
+.reader h5,
+.reader h6 {
+  color: var(--text-primary);
+}
+
+.reader a {
+  color: var(--accent-color);
+}
+
+.reader a:hover {
+  color: var(--accent-hover);
+}
+
+/* Ensure images maintain proper contrast in dark mode */
+.dark-mode .reader img {
+  opacity: 0.9;
+}
+
+/* Handle EPUB content with inline styles */
+.dark-mode .reader [style*="color"] {
+  filter: brightness(1.2);
 }
 
 .word {
@@ -41,7 +74,7 @@
 }
 
 .word.highlighted {
-  background-color: #E8D5B7;
+  background-color: var(--highlight-bg);
   border-radius: 2px;
 }
 
@@ -68,7 +101,7 @@
 .summary-marker-line {
   flex: 1;
   height: 1px;
-  background-color: #63AE8D;
+  background-color: var(--summary-color);
   max-width: 200px;
 }
 
@@ -79,7 +112,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #63AE8D;
+  color: var(--summary-color);
   position: relative;
 }
 
@@ -89,8 +122,8 @@
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background-color: #F0EEE1;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  background-color: var(--summary-bg);
+  box-shadow: 0 2px 4px var(--shadow);
 }
 
 .summary-marker-icon svg {

@@ -1,4 +1,5 @@
 import { useRef } from 'react';
+import { useDarkMode } from '../hooks/useDarkMode';
 import './TopPanel.css';
 
 interface TopPanelProps {
@@ -7,6 +8,7 @@ interface TopPanelProps {
 }
 
 export function TopPanel({ onOpenBook, onFileSelect }: TopPanelProps) {
+  const { isDarkMode, toggleDarkMode } = useDarkMode();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const handleHardRefresh = () => {
@@ -51,6 +53,13 @@ export function TopPanel({ onOpenBook, onFileSelect }: TopPanelProps) {
       <header className="top-panel">
         <div className="top-panel-content">
           <div className="top-panel-actions">
+            <button 
+              className="btn-label dark-mode-toggle" 
+              onClick={toggleDarkMode}
+              title={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {isDarkMode ? '☀️' : '🌙'}
+            </button>
             <button 
               className="btn-label" 
               onClick={handleOpenBook}

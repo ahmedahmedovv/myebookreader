@@ -4,18 +4,18 @@
   left: 0;
   right: 0;
   width: 100%;
-  background: #F5F2E8;
+  background: var(--bg-panel-solid);
   padding: 20px;
   border-radius: 16px 16px 0 0;
-  box-shadow: 0 -4px 24px rgba(0,0,0,0.2);
+  box-shadow: 0 -4px 24px var(--shadow-large);
   max-height: 40vh;
   overflow-y: auto;
   z-index: 1000;
   font-size: 16px;
   line-height: 1.6;
-  border-top: 1px solid #D4C4B0;
+  border-top: 1px solid var(--border-solid);
   transform: translateY(0);
-  transition: transform 0.3s ease-out, opacity 0.3s ease-out;
+  transition: transform 0.3s ease-out, opacity 0.3s ease-out, background-color 0.3s ease, border-color 0.3s ease;
   opacity: 1;
 }
 
@@ -29,10 +29,10 @@
 .definition-word {
   font-weight: 600;
   font-size: 20px;
-  color: #63AE8D;
+  color: var(--accent-color);
   margin-bottom: 12px;
   padding-bottom: 8px;
-  border-bottom: 2px solid #D4C4B0;
+  border-bottom: 2px solid var(--border-solid);
 }
 
 .definition-section {
@@ -44,20 +44,20 @@
 }
 
 .definition-text {
-  color: #4A3E2E;
+  color: var(--text-primary);
   margin-bottom: 4px;
 }
 
 .definition-example {
-  color: #8B6F47;
+  color: var(--text-tertiary);
   font-style: italic;
   padding-left: 12px;
-  border-left: 3px solid #63AE8D;
+  border-left: 3px solid var(--accent-color);
   margin-top: 8px;
 }
 
 .definition-loading {
-  color: #8B6F47;
+  color: var(--text-tertiary);
   font-style: italic;
 }
 
