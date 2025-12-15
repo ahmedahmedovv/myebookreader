@@ -128,10 +128,12 @@ export const Reader = forwardRef<HTMLDivElement, ReaderProps>(
     const handleClick = async (e: React.MouseEvent<HTMLDivElement>) => {
       const target = e.target as HTMLElement;
 
-      if (target.classList.contains('summary-marker')) {
+      // Check if click is on summary marker or any of its children
+      const summaryMarker = target.closest('.summary-marker') as HTMLElement;
+      if (summaryMarker) {
         e.preventDefault();
         e.stopPropagation();
-        onSummaryClick(target);
+        onSummaryClick(summaryMarker);
         return;
       }
 

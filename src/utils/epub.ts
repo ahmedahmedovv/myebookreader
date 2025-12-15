@@ -110,8 +110,17 @@ export function insertSummaryMarkers(htmlContent: string): string {
   boundaryElements.forEach((element) => {
     const summaryDiv = doc.createElement('div');
     summaryDiv.className = 'summary-marker';
-    summaryDiv.textContent = '📝';
-    summaryDiv.setAttribute('style', 'color: #007AFF; font-weight: 600; margin: 15px 0; display: block; font-size: 24px;');
+    summaryDiv.innerHTML = `
+      <div class="summary-marker-line"></div>
+      <div class="summary-marker-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+          <path d="M9 9C9 7.34315 10.3431 6 12 6C13.6569 6 15 7.34315 15 9C15 10.6569 13.6569 12 12 12V14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+          <path d="M12 18H12.01" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+        </svg>
+      </div>
+      <div class="summary-marker-line"></div>
+    `;
     element.appendChild(summaryDiv);
   });
 

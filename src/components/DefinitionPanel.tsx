@@ -120,7 +120,11 @@ function getTextBetweenMarkers(currentMarker: Element): string {
     range.setEndBefore(currentMarker);
   }
 
-  let text = range.toString().replace(/📝/g, '').trim();
+  // Remove any summary marker content from the text
+  let text = range.toString().trim();
+  // Remove emoji markers (for backwards compatibility)
+  text = text.replace(/📝/g, '');
+  // Remove any summary marker HTML content that might have been included
   text = text.replace(/\s+/g, ' ');
 
   return text.substring(0, CONFIG.MAX_SUMMARY_TEXT);
