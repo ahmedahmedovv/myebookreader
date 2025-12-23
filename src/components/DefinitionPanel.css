@@ -47,8 +47,9 @@
 .definition-text {
   color: var(--text-primary);
   margin-bottom: 4px;
-  text-align: justify; 
-
+  text-align: justify;
+  text-align-last: justify;
+  display: block;
 }
 
 .definition-example {
@@ -57,6 +58,9 @@
   padding-left: 12px;
   border-left: 3px solid var(--accent-color);
   margin-top: 8px;
+  text-align: justify;
+  text-align-last: justify;
+  display: block;
 }
 
 .definition-loading {
