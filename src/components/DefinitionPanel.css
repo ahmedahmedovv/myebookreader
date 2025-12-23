@@ -17,6 +17,7 @@
   transform: translateY(0);
   transition: transform 0.3s ease-out, opacity 0.3s ease-out, background-color 0.3s ease, border-color 0.3s ease;
   opacity: 1;
+  text-align: justify; 
 }
 
 .definition.hidden {
