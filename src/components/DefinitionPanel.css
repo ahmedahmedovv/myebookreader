@@ -48,7 +48,6 @@
   color: var(--text-primary);
   margin-bottom: 4px;
   text-align: justify;
-  text-align-last: justify;
   display: block;
 }
 
@@ -59,7 +58,6 @@
   border-left: 3px solid var(--accent-color);
   margin-top: 8px;
   text-align: justify;
-  text-align-last: justify;
   display: block;
 }
 
