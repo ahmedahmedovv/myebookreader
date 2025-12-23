@@ -46,6 +46,8 @@
 .definition-text {
   color: var(--text-primary);
   margin-bottom: 4px;
+  text-align: justify; 
+
 }
 
 .definition-example {
