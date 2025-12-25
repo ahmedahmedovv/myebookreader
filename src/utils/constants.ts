@@ -15,7 +15,7 @@ if (!MISTRAL_API_KEY) {
 
 export const CONFIG = {
   SUMMARY_INTERVAL: 5000,
-  MAX_SUMMARY_TEXT: 8000,
+  MAX_SUMMARY_TEXT: 12000,
   SCROLL_THRESHOLD: 100,
   TOP_PANEL_SCROLL_DISTANCE: 10, // Show panel after scrolling up just 10px
   CACHE_TTL_MS: 24 * 60 * 60 * 1000,
