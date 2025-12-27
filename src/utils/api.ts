@@ -124,10 +124,10 @@ export async function generateSummary(text: string, isOnline: boolean): Promise<
       messages: [
         {
           role: 'user',
-          content: `Summarize the following text in 2-3 sentences:\n\n${text}`
+          content: `Summarize the following text in 5-6 sentences:\n\n${text}`
         }
       ],
-      max_tokens: 200
+      max_tokens: 500
     })
   });
 
