@@ -8,6 +8,7 @@ import { TopPanel } from './components/TopPanel';
 import { Reader } from './components/Reader';
 import { DefinitionPanel } from './components/DefinitionPanel';
 import { LoadingScreen } from './components/LoadingScreen';
+import { WelcomeGuide, type WelcomeGuideHandle } from './components/WelcomeGuide';
 import { registerServiceWorker } from './utils/serviceWorker';
 import './App.css';
 
@@ -15,6 +16,7 @@ function App() {
   const { loading, error, content, metadata, loadFile, loadSavedEpub, clearError } = useEpub();
   const readerContainerRef = useRef<HTMLDivElement>(null);
   const readerRef = useRef<HTMLDivElement>(null);
+  const welcomeGuideRef = useRef<WelcomeGuideHandle>(null);
   const { showBookInfo } = useScroll(readerRef);
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [selectedSummaryMarker, setSelectedSummaryMarker] = useState<Element | null>(null);
@@ -84,6 +86,7 @@ function App() {
 
   return (
     <div className="app">
+      <WelcomeGuide ref={welcomeGuideRef} />
       <OfflineIndicator />
       <InstallPrompt />
       
@@ -98,6 +101,7 @@ function App() {
       <TopPanel 
         onOpenBook={handleOpenBook}
         onFileSelect={handleFileSelect}
+        onShowHelp={() => welcomeGuideRef.current?.show()}
       />
 
       {(loading || (content && !contentReady)) && (
