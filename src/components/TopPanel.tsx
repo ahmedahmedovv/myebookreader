@@ -5,9 +5,10 @@ import './TopPanel.css';
 interface TopPanelProps {
   onOpenBook: () => void;
   onFileSelect?: (file: File) => void;
+  onShowHelp?: () => void;
 }
 
-export function TopPanel({ onOpenBook, onFileSelect }: TopPanelProps) {
+export function TopPanel({ onOpenBook, onFileSelect, onShowHelp }: TopPanelProps) {
   const { isDarkMode, toggleDarkMode } = useDarkMode();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -66,6 +67,15 @@ export function TopPanel({ onOpenBook, onFileSelect }: TopPanelProps) {
             >
               Open
             </button>
+            {onShowHelp && (
+              <button 
+                className="btn-label" 
+                onClick={onShowHelp}
+                title="Show help guide"
+              >
+                ❓
+              </button>
+            )}
             <button 
               className="btn-label" 
               onClick={handleHardRefresh}
