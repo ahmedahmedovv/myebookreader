@@ -10,16 +10,18 @@ interface ReaderProps {
   onWordClick: (word: string) => void;
   onSummaryClick: (marker: Element) => void;
   onReady?: () => void;
+  onWordUnmark?: (word: string) => void;
 }
 
 export interface ReaderHandle {
   getElement: () => HTMLDivElement | null;
   markWordAsDefined: (word: string) => void;
+  unmarkWordAsDefined: (word: string) => void;
   isWordDefined: (word: string) => boolean;
 }
 
 export const Reader = forwardRef<ReaderHandle, ReaderProps>(
-  ({ content, onWordClick, onSummaryClick, onReady }, ref) => {
+  ({ content, onWordClick, onSummaryClick, onReady, onWordUnmark }, ref) => {
     const readerRef = useRef<HTMLDivElement>(null);
     const [isWrapped, setIsWrapped] = useState(false);
     const [isRestored, setIsRestored] = useState(false);
@@ -37,6 +39,17 @@ export const Reader = forwardRef<ReaderHandle, ReaderProps>(
           const wordText = wordEl.textContent?.trim().toLowerCase() || '';
           if (wordText === normalizedWord) {
             wordEl.classList.add('defined');
+          }
+        });
+      },
+      unmarkWordAsDefined: (word: string) => {
+        if (!readerRef.current) return;
+        const normalizedWord = word.toLowerCase().trim();
+        const allWords = Array.from(readerRef.current.querySelectorAll('.word')) as HTMLElement[];
+        allWords.forEach((wordEl) => {
+          const wordText = wordEl.textContent?.trim().toLowerCase() || '';
+          if (wordText === normalizedWord) {
+            wordEl.classList.remove('defined');
           }
         });
       },
@@ -174,9 +187,11 @@ export const Reader = forwardRef<ReaderHandle, ReaderProps>(
         const wordText = target.textContent?.trim() || '';
         const isDefined = target.classList.contains('defined');
         
-        // If word is already defined, show definition immediately (no delay)
+        // If word is already defined, unmark it and remove cache
         if (isDefined) {
-          onWordClick(wordText);
+          if (onWordUnmark) {
+            onWordUnmark(wordText);
+          }
           return;
         }
 
