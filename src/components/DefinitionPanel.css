@@ -46,25 +46,29 @@
 .definition-unmark-btn {
   background: var(--bg-secondary);
   border: 1px solid var(--border-solid);
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
+  border-radius: 6px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   color: var(--text-secondary);
-  font-size: 18px;
-  line-height: 1;
   padding: 0;
-  transition: background-color 0.2s, color 0.2s, border-color 0.2s;
+  transition: background-color 0.2s, color 0.2s, border-color 0.2s, transform 0.1s;
   flex-shrink: 0;
 }
 
+.definition-unmark-btn svg {
+  width: 18px;
+  height: 18px;
+  stroke: currentColor;
+}
+
 .definition-unmark-btn:hover {
-  background: var(--accent-color);
+  background: #ef4444;
   color: white;
-  border-color: var(--accent-color);
+  border-color: #ef4444;
 }
 
 .definition-unmark-btn:active {
