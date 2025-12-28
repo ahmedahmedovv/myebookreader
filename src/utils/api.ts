@@ -131,3 +131,8 @@ export async function generateSummary(text: string, isOnline: boolean): Promise<
   return summary;
 }
 
+export function removeWordDefinition(word: string): void {
+  const cacheKey = `definition:${word.toLowerCase()}`;
+  localStorage.removeItem(cacheKey);
+}
+

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { getWordDefinition, generateSummary } from '../utils/api';
+import { getWordDefinition, generateSummary, removeWordDefinition } from '../utils/api';
 import { useOnlineStatus } from '../hooks/useOnlineStatus';
 import { CONFIG } from '../utils/constants';
 import './DefinitionPanel.css';
@@ -9,12 +9,28 @@ interface DefinitionPanelProps {
   summaryMarker: Element | null;
   onClose: () => void;
   onDefinitionFetched?: (word: string) => void;
+  onWordUnmarked?: (word: string) => void;
 }
 
-export function DefinitionPanel({ word, summaryMarker, onDefinitionFetched }: DefinitionPanelProps) {
+export function DefinitionPanel({ word, summaryMarker, onClose, onDefinitionFetched, onWordUnmarked }: DefinitionPanelProps) {
   const [loading, setLoading] = useState(false);
   const [content, setContent] = useState<{ type: 'definition' | 'summary'; data: any } | null>(null);
   const isOnline = useOnlineStatus();
+
+  const handleUnmark = () => {
+    if (!word || content?.type !== 'definition') return;
+    
+    // Remove from cache
+    removeWordDefinition(word);
+    
+    // Unmark all instances in the book
+    if (onWordUnmarked) {
+      onWordUnmarked(word);
+    }
+    
+    // Close the panel
+    onClose();
+  };
 
   useEffect(() => {
     if (word) {
@@ -82,7 +98,7 @@ export function DefinitionPanel({ word, summaryMarker, onDefinitionFetched }: De
     } else {
       setContent(null);
     }
-  }, [word, summaryMarker, isOnline, onDefinitionFetched]);
+  }, [word, summaryMarker, isOnline, onDefinitionFetched, onWordUnmarked]);
 
   if (!word && !summaryMarker) return null;
 
@@ -97,7 +113,18 @@ export function DefinitionPanel({ word, summaryMarker, onDefinitionFetched }: De
         </>
       ) : content ? (
         <>
-          <div className="definition-word">{content.type === 'definition' ? content.data.word : 'Summary'}</div>
+          <div className="definition-header">
+            <div className="definition-word">{content.type === 'definition' ? content.data.word : 'Summary'}</div>
+            {content.type === 'definition' && (
+              <button 
+                className="definition-unmark-btn" 
+                onClick={handleUnmark}
+                title="Unmark word and remove from cache"
+              >
+                ✕
+              </button>
+            )}
+          </div>
           <div className="definition-section">
             <div className="definition-text">
               {content.type === 'definition' ? content.data.definition : content.data.summary}

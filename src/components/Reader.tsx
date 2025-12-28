@@ -10,7 +10,6 @@ interface ReaderProps {
   onWordClick: (word: string) => void;
   onSummaryClick: (marker: Element) => void;
   onReady?: () => void;
-  onWordUnmark?: (word: string) => void;
 }
 
 export interface ReaderHandle {
@@ -21,7 +20,7 @@ export interface ReaderHandle {
 }
 
 export const Reader = forwardRef<ReaderHandle, ReaderProps>(
-  ({ content, onWordClick, onSummaryClick, onReady, onWordUnmark }, ref) => {
+  ({ content, onWordClick, onSummaryClick, onReady }, ref) => {
     const readerRef = useRef<HTMLDivElement>(null);
     const [isWrapped, setIsWrapped] = useState(false);
     const [isRestored, setIsRestored] = useState(false);
@@ -187,11 +186,9 @@ export const Reader = forwardRef<ReaderHandle, ReaderProps>(
         const wordText = target.textContent?.trim() || '';
         const isDefined = target.classList.contains('defined');
         
-        // If word is already defined, unmark it and remove cache
+        // If word is already defined, show definition immediately (no delay)
         if (isDefined) {
-          if (onWordUnmark) {
-            onWordUnmark(wordText);
-          }
+          onWordClick(wordText);
           return;
         }
 

@@ -70,17 +70,10 @@ function App() {
     }
   };
 
-  const handleWordUnmark = (word: string) => {
+  const handleWordUnmarked = (word: string) => {
     // Unmark all instances of this word
     if (readerHandleRef.current) {
       readerHandleRef.current.unmarkWordAsDefined(word);
-    }
-    // Remove from cache
-    const cacheKey = `definition:${word.toLowerCase()}`;
-    localStorage.removeItem(cacheKey);
-    // Close definition panel if this word is currently selected
-    if (selectedWord && selectedWord.toLowerCase() === word.toLowerCase()) {
-      setSelectedWord(null);
     }
   };
 
@@ -155,7 +148,6 @@ function App() {
             onWordClick={handleWordClick}
             onSummaryClick={handleSummaryClick}
             onReady={handleContentReady}
-            onWordUnmark={handleWordUnmark}
           />
         </div>
       )}
@@ -168,6 +160,7 @@ function App() {
           setSelectedSummaryMarker(null);
         }}
         onDefinitionFetched={handleDefinitionFetched}
+        onWordUnmarked={handleWordUnmarked}
       />
     </div>
   );
