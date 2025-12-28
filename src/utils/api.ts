@@ -5,7 +5,8 @@ export async function getWordDefinition(word: string, isOnline: boolean): Promis
   const cacheKey = `definition:${word.toLowerCase()}`;
   const cachedDef = localStorage.getItem(cacheKey);
   
-  if (cachedDef && !isOnline) {
+  // Always check cache first - return immediately if cached
+  if (cachedDef) {
     const cached = JSON.parse(cachedDef);
     return {
       word,
@@ -15,14 +16,6 @@ export async function getWordDefinition(word: string, isOnline: boolean): Promis
   }
 
   if (!isOnline) {
-    if (cachedDef) {
-      const cached = JSON.parse(cachedDef);
-      return {
-        word,
-        definition: cached.definition,
-        example: cached.example,
-      };
-    }
     throw new Error('You are offline. No cached definition available.');
   }
 
@@ -51,14 +44,6 @@ Example: [example sentence]`
   });
 
   if (!response.ok) {
-    if (cachedDef) {
-      const cached = JSON.parse(cachedDef);
-      return {
-        word,
-        definition: cached.definition,
-        example: cached.example,
-      };
-    }
     throw new Error('Failed to get definition');
   }
 

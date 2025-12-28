@@ -5,7 +5,7 @@ import { OfflineIndicator } from './components/OfflineIndicator';
 import { InstallPrompt } from './components/InstallPrompt';
 import { BookInfo } from './components/BookInfo';
 import { TopPanel } from './components/TopPanel';
-import { Reader } from './components/Reader';
+import { Reader, type ReaderHandle } from './components/Reader';
 import { DefinitionPanel } from './components/DefinitionPanel';
 import { LoadingScreen } from './components/LoadingScreen';
 import { WelcomeGuide, type WelcomeGuideHandle } from './components/WelcomeGuide';
@@ -15,9 +15,11 @@ import './App.css';
 function App() {
   const { loading, error, content, metadata, loadFile, loadSavedEpub, clearError } = useEpub();
   const readerContainerRef = useRef<HTMLDivElement>(null);
-  const readerRef = useRef<HTMLDivElement>(null);
+  const readerHandleRef = useRef<ReaderHandle>(null);
   const welcomeGuideRef = useRef<WelcomeGuideHandle>(null);
-  const { showBookInfo } = useScroll(readerRef);
+  // Create a ref that points to the DOM element from the handle
+  const readerDOMRef = useRef<HTMLDivElement | null>(null);
+  const { showBookInfo } = useScroll(readerDOMRef);
   const [selectedWord, setSelectedWord] = useState<string | null>(null);
   const [selectedSummaryMarker, setSelectedSummaryMarker] = useState<Element | null>(null);
   const [contentReady, setContentReady] = useState(false);
@@ -61,6 +63,13 @@ function App() {
     setSelectedSummaryMarker(null);
   };
 
+  const handleDefinitionFetched = (word: string) => {
+    // Mark all instances of this word as defined
+    if (readerHandleRef.current) {
+      readerHandleRef.current.markWordAsDefined(word);
+    }
+  };
+
   const handleSummaryClick = (marker: Element) => {
     setSelectedSummaryMarker(marker);
     setSelectedWord(null);
@@ -74,7 +83,14 @@ function App() {
   };
 
   useEffect(() => {
-    const reader = readerRef.current;
+    // Update DOM ref when handle is available
+    if (readerHandleRef.current) {
+      readerDOMRef.current = readerHandleRef.current.getElement();
+    }
+  }, [content, contentReady]);
+
+  useEffect(() => {
+    const reader = readerDOMRef.current;
     if (!reader) return;
 
     const handleScrollEvent = () => handleScroll();
@@ -120,7 +136,7 @@ function App() {
       {content && (
         <div ref={readerContainerRef} className="reader-container">
           <Reader
-            ref={readerRef}
+            ref={readerHandleRef}
             content={content.html}
             onWordClick={handleWordClick}
             onSummaryClick={handleSummaryClick}
@@ -136,6 +152,7 @@ function App() {
           setSelectedWord(null);
           setSelectedSummaryMarker(null);
         }}
+        onDefinitionFetched={handleDefinitionFetched}
       />
     </div>
   );

@@ -78,6 +78,16 @@
   border-radius: 2px;
 }
 
+.word.defined {
+  border-bottom: 2px dotted var(--accent-color);
+  cursor: pointer;
+}
+
+.word.defined:hover {
+  background-color: var(--highlight-bg);
+  border-radius: 2px;
+}
+
 .summary-marker {
   margin: 30px 0;
   display: flex;

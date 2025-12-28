@@ -1,4 +1,4 @@
-import { useRef, useEffect, useState, forwardRef } from 'react';
+import { useRef, useEffect, useState, forwardRef, useImperativeHandle } from 'react';
 import { getScrollPosition, saveScrollPosition } from '../utils/storage';
 import './Reader.css';
 
@@ -12,7 +12,13 @@ interface ReaderProps {
   onReady?: () => void;
 }
 
-export const Reader = forwardRef<HTMLDivElement, ReaderProps>(
+export interface ReaderHandle {
+  getElement: () => HTMLDivElement | null;
+  markWordAsDefined: (word: string) => void;
+  isWordDefined: (word: string) => boolean;
+}
+
+export const Reader = forwardRef<ReaderHandle, ReaderProps>(
   ({ content, onWordClick, onSummaryClick, onReady }, ref) => {
     const readerRef = useRef<HTMLDivElement>(null);
     const [isWrapped, setIsWrapped] = useState(false);
@@ -20,30 +26,54 @@ export const Reader = forwardRef<HTMLDivElement, ReaderProps>(
     const definitionTimeoutRef = useRef<number | null>(null);
     const pendingWordsRef = useRef<HTMLElement[]>([]);
     
-    // Use forwarded ref or internal ref
-    const actualRef = (ref as React.RefObject<HTMLDivElement>) || readerRef;
+    // Expose methods and DOM element to parent component
+    useImperativeHandle(ref, () => ({
+      getElement: () => readerRef.current,
+      markWordAsDefined: (word: string) => {
+        if (!readerRef.current) return;
+        const normalizedWord = word.toLowerCase().trim();
+        const allWords = Array.from(readerRef.current.querySelectorAll('.word')) as HTMLElement[];
+        allWords.forEach((wordEl) => {
+          const wordText = wordEl.textContent?.trim().toLowerCase() || '';
+          if (wordText === normalizedWord) {
+            wordEl.classList.add('defined');
+          }
+        });
+      },
+      isWordDefined: (word: string) => {
+        if (!readerRef.current) return false;
+        const normalizedWord = word.toLowerCase().trim();
+        const allWords = Array.from(readerRef.current.querySelectorAll('.word')) as HTMLElement[];
+        return allWords.some((wordEl) => {
+          const wordText = wordEl.textContent?.trim().toLowerCase() || '';
+          return wordText === normalizedWord && wordEl.classList.contains('defined');
+        });
+      },
+    }), []);
 
     useEffect(() => {
-      if (!actualRef.current || isWrapped) return;
+      if (!readerRef.current || isWrapped) return;
 
       // Wrap words in spans - this can take time for large books
-      wrapWordsInSpans(actualRef.current);
+      wrapWordsInSpans(readerRef.current);
       setIsWrapped(true);
       
       // Signal that content is ready after wrapping is complete
       // Use requestAnimationFrame to ensure DOM is fully updated
       requestAnimationFrame(() => {
         requestAnimationFrame(() => {
+          // Mark all words that have cached definitions
+          markCachedWords(readerRef.current!);
           if (onReady) {
             onReady();
           }
         });
       });
-    }, [content, isWrapped, actualRef, onReady]);
+    }, [content, isWrapped, onReady]);
 
     // Restore scroll position after content is loaded and wrapped
     useEffect(() => {
-      if (!actualRef.current || !isWrapped || isRestored) return;
+      if (!readerRef.current || !isWrapped || isRestored) return;
 
       const savedPosition = getScrollPosition();
       if (savedPosition <= 0) {
@@ -52,7 +82,7 @@ export const Reader = forwardRef<HTMLDivElement, ReaderProps>(
       }
 
       const restoreScroll = () => {
-        const reader = actualRef.current;
+        const reader = readerRef.current;
         if (!reader) return;
 
         // Wait for content to be fully rendered
@@ -101,7 +131,7 @@ export const Reader = forwardRef<HTMLDivElement, ReaderProps>(
 
     // Save scroll position on scroll
     useEffect(() => {
-      const reader = actualRef.current;
+      const reader = readerRef.current;
       if (!reader) return;
 
       const handleScroll = () => {
@@ -114,7 +144,7 @@ export const Reader = forwardRef<HTMLDivElement, ReaderProps>(
       return () => {
         reader.removeEventListener('scroll', handleScroll);
       };
-    }, [actualRef]);
+    }, []);
 
     // Cleanup timeout on unmount
     useEffect(() => {
@@ -140,6 +170,15 @@ export const Reader = forwardRef<HTMLDivElement, ReaderProps>(
       if (target.classList.contains('word')) {
         e.preventDefault();
         e.stopPropagation();
+
+        const wordText = target.textContent?.trim() || '';
+        const isDefined = target.classList.contains('defined');
+        
+        // If word is already defined, show definition immediately (no delay)
+        if (isDefined) {
+          onWordClick(wordText);
+          return;
+        }
 
         const wasHighlighted = target.classList.contains('highlighted');
         
@@ -194,7 +233,7 @@ export const Reader = forwardRef<HTMLDivElement, ReaderProps>(
 
     return (
       <div
-        ref={actualRef}
+        ref={readerRef}
         className="reader"
         onClick={handleClick}
         dangerouslySetInnerHTML={{ __html: content }}
@@ -202,6 +241,35 @@ export const Reader = forwardRef<HTMLDivElement, ReaderProps>(
     );
   }
 );
+
+// Mark all words that have cached definitions
+function markCachedWords(reader: HTMLElement) {
+  const allWords = Array.from(reader.querySelectorAll('.word')) as HTMLElement[];
+  const wordSet = new Set<string>();
+  
+  // Collect all unique words
+  allWords.forEach((wordEl) => {
+    const wordText = wordEl.textContent?.trim().toLowerCase() || '';
+    if (wordText && !isWhitespaceOrPunctuation(wordText)) {
+      wordSet.add(wordText);
+    }
+  });
+  
+  // Check each word against cache and mark if found
+  wordSet.forEach((word) => {
+    const cacheKey = `definition:${word}`;
+    const cachedDef = localStorage.getItem(cacheKey);
+    if (cachedDef) {
+      // Mark all instances of this word
+      allWords.forEach((wordEl) => {
+        const wordText = wordEl.textContent?.trim().toLowerCase() || '';
+        if (wordText === word) {
+          wordEl.classList.add('defined');
+        }
+      });
+    }
+  });
+}
 
 function wrapWordsInSpans(element: HTMLElement) {
   const walker = document.createTreeWalker(

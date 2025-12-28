@@ -8,36 +8,51 @@ interface DefinitionPanelProps {
   word: string | null;
   summaryMarker: Element | null;
   onClose: () => void;
+  onDefinitionFetched?: (word: string) => void;
 }
 
-export function DefinitionPanel({ word, summaryMarker }: DefinitionPanelProps) {
+export function DefinitionPanel({ word, summaryMarker, onDefinitionFetched }: DefinitionPanelProps) {
   const [loading, setLoading] = useState(false);
   const [content, setContent] = useState<{ type: 'definition' | 'summary'; data: any } | null>(null);
   const isOnline = useOnlineStatus();
 
   useEffect(() => {
     if (word) {
+      // Check if word is already cached
+      const cacheKey = `definition:${word.toLowerCase()}`;
+      const cachedDef = localStorage.getItem(cacheKey);
+      
+      if (cachedDef) {
+        // Word is cached, show immediately without loading
+        const cached = JSON.parse(cachedDef);
+        setContent({
+          type: 'definition',
+          data: { word, definition: cached.definition, example: cached.example }
+        });
+        setLoading(false);
+        // Mark word as defined
+        if (onDefinitionFetched) {
+          onDefinitionFetched(word);
+        }
+        return;
+      }
+      
+      // Word not cached, fetch from API
       setLoading(true);
       getWordDefinition(word, isOnline)
         .then((def) => {
           setContent({ type: 'definition', data: def });
           setLoading(false);
+          // Mark word as defined after successful fetch
+          if (onDefinitionFetched) {
+            onDefinitionFetched(word);
+          }
         })
         .catch((err) => {
-          const cacheKey = `definition:${word.toLowerCase()}`;
-          const cachedDef = localStorage.getItem(cacheKey);
-          if (cachedDef) {
-            const cached = JSON.parse(cachedDef);
-            setContent({
-              type: 'definition',
-              data: { word, definition: cached.definition, example: cached.example }
-            });
-          } else {
-            setContent({
-              type: 'definition',
-              data: { word, definition: err.message || 'Failed to load definition' }
-            });
-          }
+          setContent({
+            type: 'definition',
+            data: { word, definition: err.message || 'Failed to load definition' }
+          });
           setLoading(false);
         });
     } else if (summaryMarker) {
@@ -67,7 +82,7 @@ export function DefinitionPanel({ word, summaryMarker }: DefinitionPanelProps) {
     } else {
       setContent(null);
     }
-  }, [word, summaryMarker, isOnline]);
+  }, [word, summaryMarker, isOnline, onDefinitionFetched]);
 
   if (!word && !summaryMarker) return null;
 
