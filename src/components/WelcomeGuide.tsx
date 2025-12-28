@@ -7,7 +7,7 @@ export interface WelcomeGuideHandle {
   show: () => void;
 }
 
-export const WelcomeGuide = forwardRef<WelcomeGuideHandle, {}>((props, ref) => {
+export const WelcomeGuide = forwardRef<WelcomeGuideHandle, {}>((_props, ref) => {
   const [show, setShow] = useState(false);
 
   useImperativeHandle(ref, () => ({
