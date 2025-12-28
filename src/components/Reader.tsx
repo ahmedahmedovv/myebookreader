@@ -122,7 +122,7 @@ export const Reader = forwardRef<ReaderHandle, ReaderProps>(
       requestAnimationFrame(() => {
         requestAnimationFrame(restoreScroll);
       });
-    }, [isWrapped, isRestored, actualRef]);
+    }, [isWrapped, isRestored]);
 
     // Reset restoration flag when content changes
     useEffect(() => {
