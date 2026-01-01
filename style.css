@@ -1,0 +1,178 @@
+/* --- High-Quality Typography --- */
+@font-face {
+    font-family: 'Bookerly';
+    src: url('https://cdn.jsdelivr.net/gh/janeczku/bookerly-font/bookerly-regular.woff2') format('woff2');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+:root {
+    --bg-color: #f4f1ea; /* Soft paper tint */
+    --text-color: #2c2c2c;
+    --accent-color: #5d4037;
+    --card-bg: #ffffff;
+    --shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+}
+
+* {
+    box-sizing: border-box;
+    -webkit-tap-highlight-color: transparent;
+}
+
+body {
+    font-family: 'Bookerly', Georgia, serif;
+    margin: 0;
+    padding: 0;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+    line-height: 1.8;
+    overscroll-behavior-y: none;
+}
+
+/* --- Controls / Toolbar --- */
+#controls {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    background: rgba(255, 255, 255, 0.95);
+    backdrop-filter: blur(10px);
+    padding: 12px 24px;
+    box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+    z-index: 1000;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: transform 0.4s ease;
+}
+
+.header-hidden {
+    transform: translateY(-100%);
+}
+
+#controls small {
+    font-family: system-ui, -apple-system, sans-serif;
+    color: #888;
+    font-size: 0.85rem;
+    letter-spacing: 0.5px;
+}
+
+/* --- Main Book Container --- */
+#out {
+    max-width: 800px; /* Optimal reading width for tablets */
+    margin: 80px auto;
+    background: var(--card-bg);
+    padding: 60px 80px; /* Wide gutters for thumbs */
+    min-height: 100vh;
+    box-shadow: var(--shadow);
+    border-radius: 4px;
+    font-size: 1.35rem; /* Increased for tablet readability */
+    text-align: justify;
+    hyphens: auto;
+}
+
+/* --- Interaction Elements --- */
+.word {
+    cursor: pointer;
+    border-radius: 4px;
+    padding: 1px 2px;
+    transition: all 0.2s ease;
+    display: inline-block;
+}
+
+.word:active {
+    background: #e0dcd0;
+}
+
+.highlighted {
+    background: #ffe082 !important; /* Warm highlighter yellow */
+    box-shadow: 0 0 5px #ffe082;
+}
+
+.summary-trigger {
+    text-align: center;
+    cursor: pointer;
+    padding: 40px 0;
+    color: var(--accent-color);
+    font-size: 1.5rem;
+    opacity: 0.6;
+    transition: opacity 0.3s;
+}
+
+.summary-trigger:hover {
+    opacity: 1;
+}
+
+/* --- Tablet Bottom Sheet (Popup) --- */
+#popup {
+    display: none;
+    position: fixed;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 90%;
+    max-width: 600px;
+    background: #ffffff;
+    padding: 32px;
+    box-shadow: 0 -10px 40px rgba(0,0,0,0.2);
+    z-index: 2000;
+    max-height: 50vh;
+    overflow-y: auto;
+    border-radius: 24px;
+    border: 1px solid rgba(0,0,0,0.05);
+    animation: slideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    text-align: justify;
+}
+
+@keyframes slideUp {
+    from { transform: translate(-50%, 100%); }
+    to { transform: translate(-50%, 0); }
+}
+
+#popup-content strong {
+    font-size: 1.6rem;
+    display: block;
+    margin-bottom: 12px;
+    color: var(--accent-color);
+    border-bottom: 2px solid #f0efeb;
+    padding-bottom: 8px;
+}
+
+#popup-content p {
+    font-size: 1.1rem;
+    line-height: 1.6;
+    margin-bottom: 16px;
+}
+
+/* --- Progress Bar --- */
+.loading-bar {
+    height: 3px;
+    width: 100%;
+    background: transparent;
+    position: fixed;
+    top: 0;
+    z-index: 1001;
+}
+
+#progress {
+    height: 100%;
+    width: 0%;
+    background: var(--accent-color);
+    transition: width 0.3s ease;
+}
+
+/* --- Tablet Responsive Tweaks --- */
+@media (max-width: 768px) {
+    #out {
+        margin: 0;
+        padding: 60px 24px;
+        font-size: 1.2rem;
+        border-radius: 0;
+    }
+    
+    #popup {
+        bottom: 0;
+        width: 100%;
+        border-radius: 24px 24px 0 0;
+    }
+}
