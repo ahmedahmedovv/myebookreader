@@ -1,145 +1,676 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides comprehensive guidance to Claude Code (claude.ai/code) when working with code in this repository.
+
+---
+
+## Table of Contents
+
+1. [Project Overview](#project-overview)
+2. [Target Device & Compatibility](#target-device--compatibility)
+3. [Development Setup](#development-setup)
+4. [File Structure](#file-structure)
+5. [Architecture Deep Dive](#architecture-deep-dive)
+6. [Feature Documentation](#feature-documentation)
+7. [Styling System](#styling-system)
+8. [Responsive Design](#responsive-design)
+9. [API Integration](#api-integration)
+10. [State Management](#state-management)
+11. [Critical Implementation Rules](#critical-implementation-rules)
+12. [Common Pitfalls](#common-pitfalls)
+13. [Testing Guidelines](#testing-guidelines)
+
+---
 
 ## Project Overview
 
-This is an AI-powered EPUB reader with interactive features. It's a client-side web application that uses Mistral AI for word definitions (with example sentences) and section summaries. The application has no build system or dependencies - it's pure HTML/CSS/JS with CDN-loaded libraries.
+**AI-Powered EPUB Reader** - A client-side web application for reading EPUB books with intelligent features:
+
+| Feature | Description |
+|---------|-------------|
+| Word Pronunciation | Click any word to hear it spoken aloud (Web Speech API) |
+| Word Definitions | AI-powered definitions with example sentences (Mistral AI) |
+| Section Summaries | Auto-generated summaries every ~1000 words |
+| Dark Mode | System-wide theming with localStorage persistence |
+| Reading Progress | Scroll position saved per book |
+
+**Tech Stack:**
+- Pure HTML/CSS/JavaScript (no build system)
+- JSZip (CDN) for EPUB parsing
+- Mistral AI API for definitions/summaries
+- Web Speech API for text-to-speech
+- Bookerly font (CDN)
+
+---
+
+## Target Device & Compatibility
+
+### Primary Target: iPad mini 3 with iOS 12 Safari
+
+This is the **most critical constraint**. All code must work on iOS 12 Safari (released 2018).
+
+#### Allowed JavaScript Features
+```javascript
+// YES - Safe to use
+var, let, const
+Arrow functions: () => {}
+Promises: new Promise(), .then(), .catch()
+async/await (with caution)
+Template literals: `${var}`
+Array methods: map, filter, forEach, find
+Object.entries(), Object.keys()
+IntersectionObserver
+localStorage
+fetch API
+```
+
+#### Forbidden JavaScript Features
+```javascript
+// NO - Will break on iOS 12
+Optional chaining: obj?.property
+Nullish coalescing: value ?? default
+Array.prototype.flat()
+Array.prototype.flatMap()
+Object.fromEntries()
+String.prototype.matchAll()
+globalThis
+BigInt
+```
+
+#### CSS Compatibility Notes
+- Flexbox: Fully supported
+- CSS Grid: Basic support (avoid subgrid)
+- CSS Variables: Fully supported
+- `env(safe-area-inset-*)`: Supported
+- `gap` in flexbox: NOT supported (use margins instead)
+
+---
 
 ## Development Setup
 
-This is a static web application with no build system. To develop:
+### Running Locally
 
 ```bash
-# Serve locally (use any static server)
+# Option 1: Python
 python -m http.server 8000
-# or
+
+# Option 2: Node.js
 npx serve .
+
+# Option 3: PHP
+php -S localhost:8000
 ```
 
-Then open http://localhost:8000
+Then open: `http://localhost:8000`
 
-## Architecture
+### No Build Process Required
+- Edit files directly
+- Refresh browser to see changes
+- All dependencies loaded via CDN
 
-### Core Files
+---
 
-- **index.html**: Minimal icon bar header, hidden file input, content area, bottom-sheet popup (no close button). Loads JSZip from CDN for EPUB parsing.
-- **script.js**: All application logic (~420 lines)
-- **style.css**: CSS variables for dark mode theming, fully responsive styling with mobile/tablet breakpoints
+## File Structure
 
-### Key Technical Implementation
+```
+107/
+├── index.html      # Main HTML (44 lines)
+├── script.js       # All JavaScript logic (539 lines)
+├── style.css       # All styles (480 lines)
+└── CLAUDE.md       # This documentation
+```
 
-**EPUB Processing Flow**:
-1. File read via FileReader (for browser compatibility) instead of `file.arrayBuffer()`
-2. Unzip with JSZip to extract HTML, CSS, and images
-3. Convert CSS links to inline `<style>` tags
-4. Convert image sources to data URLs via FileReader
-5. Parse HTML with DOMParser and extract body content
-6. Divide into sections with "Summary" button triggers every 1000 words
+### index.html Structure
+```html
+<body>
+    <header id="header">           <!-- Fixed 56px icon bar -->
+        <div class="header-content">
+            <div class="header-brand">   <!-- 📖 logo -->
+            <div class="header-actions"> <!-- 📁 upload, ☀️🌙 dark mode -->
+        </div>
+        <input type="file" id="epubInput" hidden>
+        <div id="loadingBar">      <!-- Progress bar -->
+    </header>
 
-**Lazy Text Wrapping** (script.js:~49-83):
-- Uses IntersectionObserver with 400px rootMargin
-- Each block element (p, div, h1-h6, li) observed separately
-- Words wrapped in clickable `<span class="word">` only when entering viewport
-- Critical for performance on large EPUBs (prevents DOM bloat)
-- Elements marked with `dataset.wrapped = 'true'` after processing
-- **IMPORTANT**: Section trigger buttons are explicitly excluded from wrapping to prevent their text from becoming clickable
+    <main id="content"></main>     <!-- EPUB content renders here -->
 
-**Section Division** (script.js:~275-340):
-- Traverses DOM tree recursively, accumulating text nodes
-- **Skips text inside `<style>` and `<script>` tags** to prevent CSS/JS code in summaries
-- Inserts `<button class="section-trigger">Summary</button>` elements every ~1000 words
-- Stores accumulated section text in `button.dataset.summaryText`
-- Must maintain proper parent-child DOM relationships during traversal
+    <div id="popup">               <!-- Bottom sheet for definitions -->
+        <div id="popupContent">
+    </div>
+</body>
+```
 
-**Resource Handling**:
-- Creates maps for CSS files (by filename and full path)
-- Creates maps for images (by filename, full path, and "images/" prefix)
-- All paths handled with multiple lookup strategies to catch different EPUB structures
+---
 
-**AI Integration**:
-- API key in script.js:1 (client-side only, no backend)
-- Single `callAI()` function handles all Mistral API calls
-- Model: `mistral-large-latest`
-- **Word definitions**: Returns `{definition, example}` object with markdown stripping
-  - Prompt explicitly requests no labels or markdown formatting
-  - Response parser handles both labeled and unlabeled formats
-  - Strips `**bold**`, `*italic*`, `_underline_`, and backticks
-- **Section summaries**: 7-8 sentences, text truncated to 5000 chars before sending
+## Architecture Deep Dive
 
-**Dark Mode**:
-- CSS variables in `:root` and `body.dark-mode` for all colors
-- Preference saved to localStorage as 'darkMode': 'enabled'/'disabled'
-- Auto-initializes on page load via `initDarkMode()`
-- Affects all UI elements: header, content, popup, borders, shadows, interactive states
+### 1. SpeechService Class (script.js:3-58)
 
-**UI Interactions**:
-- Scroll automatically hides popup (primary dismiss method)
-- Clicking outside popup content dismisses it (secondary method)
-- No close button needed
-- Upload button (icon-only 📁) triggers hidden file input
-- Dark mode toggle (☀️/🌙 icon swap) saves preference
+Handles text-to-speech using the native Web Speech API.
 
-**Scroll Persistence**:
-- Saves position to localStorage keyed by book filename
-- Only saves when `isBookLoaded === true`
-- Auto-restores on book load
+```javascript
+var SpeechService = (function() {
+    // IIFE pattern for iOS 12 compatibility
+    // Properties: isSpeaking, speechRate, currentUtterance
+    // Methods: speak(text, callback), stop(), setSpeechRate(rate)
+})();
 
-**Auto-hiding Header**:
-- Minimal icon bar design (56px height)
-- Tracks scroll direction via `lastScrollY` comparison
-- Hides header on downward scroll (when scrollY > 100px)
-- Only active when `isBookLoaded === true`
+var speechService = new SpeechService();  // Global instance
+```
+
+**Key behaviors:**
+- Auto-stops previous speech before starting new
+- Default rate: 1.0 (range: 0.5 - 2.0)
+- Language: English ('en')
+- Graceful fallback if Web Speech API unavailable
+
+---
+
+### 2. EPUB Processing Pipeline (script.js:159-298)
+
+```
+┌─────────────┐     ┌─────────────┐     ┌─────────────┐
+│  File Input │ --> │  FileReader │ --> │   JSZip     │
+│   (.epub)   │     │ (to buffer) │     │  (unzip)    │
+└─────────────┘     └─────────────┘     └─────────────┘
+                                              │
+        ┌─────────────────────────────────────┼─────────────────────────────────────┐
+        ▼                                     ▼                                     ▼
+┌───────────────┐                    ┌───────────────┐                    ┌───────────────┐
+│  HTML Files   │                    │   CSS Files   │                    │ Image Files   │
+│ .html, .xhtml │                    │     .css      │                    │ jpg,png,gif.. │
+└───────────────┘                    └───────────────┘                    └───────────────┘
+        │                                     │                                     │
+        ▼                                     ▼                                     ▼
+┌───────────────┐                    ┌───────────────┐                    ┌───────────────┐
+│  Concatenate  │                    │  Create Map   │                    │ Convert to    │
+│  all HTML     │                    │ (name→content)│                    │  Data URLs    │
+└───────────────┘                    └───────────────┘                    └───────────────┘
+        │                                     │                                     │
+        └─────────────────────────────────────┼─────────────────────────────────────┘
+                                              ▼
+                                    ┌───────────────────┐
+                                    │    DOMParser      │
+                                    │ (parse combined)  │
+                                    └───────────────────┘
+                                              │
+                    ┌─────────────────────────┼─────────────────────────┐
+                    ▼                         ▼                         ▼
+          ┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐
+          │ Replace <link>  │       │ Replace <img>   │       │ divideSections  │
+          │ with <style>    │       │ src with data:  │       │ (add Summary    │
+          └─────────────────┘       └─────────────────┘       │  buttons)       │
+                    │                         │               └─────────────────┘
+                    └─────────────────────────┼─────────────────────────┘
+                                              ▼
+                                    ┌───────────────────┐
+                                    │ Render to #content│
+                                    │ + setup observers │
+                                    └───────────────────┘
+```
+
+**Resource Lookup Strategy:**
+```javascript
+// Images and CSS are stored with multiple keys for flexible lookup:
+imageDataMap[fileName] = dataUrl;        // "cover.jpg"
+imageDataMap[path] = dataUrl;            // "OEBPS/images/cover.jpg"
+imageDataMap['images/' + fileName] = dataUrl;  // "images/cover.jpg"
+```
+
+---
+
+### 3. Lazy Text Wrapping (script.js:108-157)
+
+**Problem:** Wrapping every word in `<span>` on large EPUBs causes massive DOM bloat and crashes.
+
+**Solution:** IntersectionObserver-based lazy loading.
+
+```
+┌─────────────────────────────────────────────────────────────┐
+│                      VIEWPORT                                │
+│  ┌───────────────────────────────────────────────────────┐  │
+│  │  Visible content (words already wrapped)              │  │
+│  └───────────────────────────────────────────────────────┘  │
+├─────────────────────────────────────────────────────────────┤
+│  ▲ 400px rootMargin - trigger zone                          │
+│  │                                                          │
+│  │  ┌───────────────────────────────────────────────────┐  │
+│  │  │  Paragraphs enter here → wrapWordsInElement()     │  │
+│  │  │  Words get wrapped in <span class="word">         │  │
+│  │  │  dataset.wrapped = 'true' prevents re-processing  │  │
+│  │  └───────────────────────────────────────────────────┘  │
+│  │                                                          │
+│  │  ┌───────────────────────────────────────────────────┐  │
+│  │  │  Unwrapped content (plain text, not clickable)    │  │
+│  │  └───────────────────────────────────────────────────┘  │
+└─────────────────────────────────────────────────────────────┘
+```
+
+**Wrapping Exclusions (CRITICAL):**
+```javascript
+// Skip these when wrapping words:
+1. Text inside .section-trigger buttons
+2. Text inside <style> tags
+3. Text inside <script> tags
+```
+
+---
+
+### 4. Section Division (script.js:389-451)
+
+Inserts "Summary" buttons every ~1000 words.
+
+```javascript
+// Recursive DOM traversal
+function processNode(node, parent) {
+    if (node.nodeType === Node.TEXT_NODE) {
+        // Count words (skip <style>/<script> content)
+        // Clone node to result
+        // If wordCount >= 1000, insert Summary button
+    } else if (node.nodeType === Node.ELEMENT_NODE) {
+        // Clone element (shallow)
+        // Recurse into children
+    }
+}
+```
+
+**Data storage:**
+```javascript
+button.dataset.summaryText = sectionText;  // Up to 1000 words stored
+```
+
+---
+
+### 5. Event Flow
+
+```
+User clicks word
+        │
+        ▼
+handleWordClick(e)
+        │
+        ├──► speechService.speak(word)     // Immediate pronunciation
+        │
+        ├──► Show popup with "Loading..."
+        │
+        ├──► await getWordDefinition(word)  // Mistral API call
+        │
+        └──► Update popup with definition + example
+
+
+User scrolls
+        │
+        ▼
+scroll event listener
+        │
+        ├──► Update header visibility (hide on scroll down)
+        │
+        ├──► popup.classList.remove('active')  // Dismiss popup
+        │
+        ├──► speechService.stop()              // Stop any speech
+        │
+        └──► saveScrollPosition()              // Persist to localStorage
+```
+
+---
+
+## Feature Documentation
+
+### Word Click & Speech (script.js:453-478)
+
+```javascript
+async function handleWordClick(e) {
+    const cleanWord = word.replace(/[^\w'-]/g, '');  // Strip punctuation
+
+    // Minimum 2 characters required
+    if (!cleanWord || cleanWord.length < 2) return;
+
+    speechService.speak(cleanWord);  // Speak immediately
+
+    // Show popup, fetch definition...
+}
+```
+
+### Dark Mode (script.js:77-101)
+
+```javascript
+// Initialization (on page load)
+initDarkMode();  // Reads localStorage('darkMode')
+
+// Toggle
+toggleDarkMode();  // Toggles body.dark-mode class, saves preference
+
+// CSS handles the rest via variables
+body.dark-mode { --bg-primary: #1a1a1a; ... }
+```
+
+### Scroll Persistence (script.js:497-511)
+
+```javascript
+// Key format: scroll_${filename}
+localStorage.setItem('scroll_mybook.epub', '1234');
+
+// Restored after EPUB loads
+restoreScrollPosition();
+```
+
+---
+
+## Styling System
+
+### CSS Variables (style.css:4-38)
+
+```css
+:root {
+    /* Light mode (default) */
+    --bg-primary: #ffffff;
+    --bg-secondary: #f9f6f1;
+    --text-primary: #2c3e50;
+    --text-secondary: #7f8c8d;
+    --accent-primary: #3498db;
+    --border-color: #e0e0e0;
+    --popup-shadow: rgba(0, 0, 0, 0.3);
+    /* ... more variables */
+}
+
+body.dark-mode {
+    /* Dark mode overrides */
+    --bg-primary: #1a1a1a;
+    --bg-secondary: #0d0d0d;
+    --text-primary: #e0e0e0;
+    /* ... */
+}
+```
+
+### Key Classes
+
+| Class | Purpose | Location |
+|-------|---------|----------|
+| `.word` | Clickable word spans | Content area |
+| `.section-trigger` | Summary buttons | Between sections |
+| `.icon-btn` | Header buttons | Header |
+| `.popup` | Bottom sheet container | Fixed bottom |
+| `.popup-content` | Inner popup content | Inside popup |
+| `.loading` | Loading state text | Popup |
+
+---
 
 ## Responsive Design
 
-Three breakpoint ranges:
-1. **Mobile Portrait (≤480px)**: Icon buttons 36px, 80vh popup
-2. **Mobile Landscape/iPad Mini Portrait (481-834px)**: Icon buttons 38px, 75vh popup
-3. **iPad Mini Landscape/Tablets (835-1024px)**: Icon buttons 40px, 70vh popup
+### Breakpoints
 
-Key mobile optimizations:
-- 36-40px minimum tap targets for icon buttons
-- Touch feedback with `:active` states
-- Safe area insets for notched devices
-- `-webkit-overflow-scrolling: touch` for iOS
-- Removed tap highlights with `-webkit-tap-highlight-color: transparent`
+```css
+/* Mobile Portrait */
+@media (max-width: 480px) { ... }
 
-## Styling Architecture
+/* Mobile Landscape & iPad Mini Portrait */
+@media (min-width: 481px) and (max-width: 834px) { ... }
 
-**External Dependencies**: Bookerly font from cdnfonts.com
+/* iPad Mini Landscape & Tablets */
+@media (min-width: 835px) and (max-width: 1024px) { ... }
+```
 
-**CSS Variables Pattern**: All colors managed via CSS custom properties for easy dark mode theming. Variables include: `--bg-primary`, `--text-primary`, `--accent-primary`, `--border-color`, etc.
+### Touch Optimizations
 
-**Layout Pattern**:
-- Fixed minimal icon bar header (56px, 1px bottom border, no shadow)
-- Centered content container (max-width: 800px)
-- Fixed bottom-sheet popup with slide-up animation (no header, no close button)
+```css
+/* Minimum tap targets */
+.icon-btn { width: 40px; height: 40px; }  /* 36-40px across breakpoints */
+.section-trigger { min-height: 44px; }
 
-**Interactive Elements**:
-- `.word` spans: clickable with hover/active states, color changes to `--accent-primary`
-- `.section-trigger`: Pill-shaped buttons (border-radius: 24px), ghost style with border, hover lift effect
-- `.icon-btn`: 40x40px transparent buttons in header, subtle hover backgrounds
-- Bottom sheet: 70-80vh max height, rounded top corners, backdrop shadow
+/* Disable tap highlight */
+* { -webkit-tap-highlight-color: transparent; }
 
-## Important Constraints
+/* iOS momentum scrolling */
+.popup-content { -webkit-overflow-scrolling: touch; }
 
-- **Target Device: iPad mini 3 running iOS 12** - All code must be compatible with iOS 12 Safari browser (released 2018). Avoid modern ES6+ features not supported in iOS 12.
-- No build process or bundler - direct file editing
-- All dependencies loaded via CDN (JSZip, Bookerly font)
-- FileReader used instead of modern file APIs for compatibility (iOS 12 requirement)
-- EPUB images/CSS embedded as data URLs/inline styles (no external references)
-- API key intentionally in client code (no backend)
+/* Safe areas for notched devices */
+padding-top: max(56px, env(safe-area-inset-top));
+```
 
-## Critical Implementation Notes
+---
 
-1. **iOS 12 Compatibility**: This project targets iPad mini 3 with iOS 12 Safari. When adding features or refactoring:
-   - Avoid modern APIs not available in iOS 12 (e.g., optional chaining `?.`, nullish coalescing `??`, `async`/`await` in some contexts)
-   - Test CSS features for iOS 12 compatibility (some modern CSS grid/flexbox features may need fallbacks)
-   - Use FileReader API instead of modern file handling APIs
-   - Keep JavaScript ES5/ES6 compatible - avoid ES2019+ features
-2. **Word Wrapping Exclusions**: Always check if text nodes are inside `.section-trigger` buttons or `<style>`/`<script>` tags before wrapping
-3. **AI Response Parsing**: Word definitions must handle both labeled ("Definition: ...") and unlabeled formats, always strip markdown
-4. **Popup Dismissal**: Scroll-to-dismiss is primary UX pattern, no close button needed
-5. **Dark Mode Variables**: Always use CSS variables for colors, never hardcoded hex values
-6. **Icon-Only Header**: All header buttons are icon-only (no text), use `aria-label` and `title` for accessibility
+## API Integration
+
+### Mistral AI Configuration
+
+```javascript
+const MISTRAL_API_KEY = 'xxx';  // Line 1 of script.js
+const MODEL = 'mistral-large-latest';
+const ENDPOINT = 'https://api.mistral.ai/v1/chat/completions';
+```
+
+### API Call Pattern (script.js:300-324)
+
+```javascript
+async function callAI(prompt, systemPrompt) {
+    const response = await fetch(ENDPOINT, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${MISTRAL_API_KEY}`
+        },
+        body: JSON.stringify({
+            model: 'mistral-large-latest',
+            messages: [
+                { role: 'system', content: systemPrompt },
+                { role: 'user', content: prompt }
+            ]
+        })
+    });
+    return data.choices[0].message.content;
+}
+```
+
+### Response Parsing (Word Definitions)
+
+```javascript
+// Handle multiple response formats:
+// 1. "Definition: xxx\nExample: xxx"  (labeled)
+// 2. "xxx\nxxx"                        (unlabeled, 2 lines)
+// 3. "xxx"                             (single line)
+
+// Always strip markdown:
+text.replace(/\*\*([^*]+)\*\*/g, '$1')  // **bold**
+    .replace(/\*([^*]+)\*/g, '$1')       // *italic*
+    .replace(/_([^_]+)_/g, '$1')         // _underline_
+    .replace(/`([^`]+)`/g, '$1')         // `code`
+```
+
+---
+
+## State Management
+
+### Global Variables (script.js:63-75)
+
+```javascript
+const WORD_THRESHOLD = 1000;      // Words per section
+let isBookLoaded = false;         // Guards scroll handlers
+let currentBookName = '';         // For scroll persistence key
+let lastScrollY = 0;              // For header hide logic
+```
+
+### DOM References
+
+```javascript
+const header = document.getElementById('header');
+const content = document.getElementById('content');
+const popup = document.getElementById('popup');
+const popupContent = document.getElementById('popupContent');
+const epubInput = document.getElementById('epubInput');
+const loadingBar = document.getElementById('loadingBar');
+const loadingProgress = document.getElementById('loadingProgress');
+const darkModeToggle = document.getElementById('darkModeToggle');
+const uploadBtn = document.getElementById('uploadBtn');
+```
+
+### localStorage Keys
+
+| Key | Value | Purpose |
+|-----|-------|---------|
+| `darkMode` | `'enabled'` or `'disabled'` | Theme preference |
+| `scroll_${filename}` | Number (pixels) | Reading position |
+
+---
+
+## Critical Implementation Rules
+
+### 1. iOS 12 JavaScript Compatibility
+```javascript
+// WRONG
+const value = obj?.property ?? 'default';
+
+// RIGHT
+const value = (obj && obj.property) ? obj.property : 'default';
+```
+
+### 2. Word Wrapping Exclusions
+```javascript
+// Always check parent chain before wrapping text nodes
+let parent = node.parentNode;
+while (parent) {
+    if (parent.classList && parent.classList.contains('section-trigger')) {
+        skipNode = true;  // Don't wrap Summary button text
+        break;
+    }
+    if (parent.nodeName === 'STYLE' || parent.nodeName === 'SCRIPT') {
+        skipText = true;  // Don't count CSS/JS as words
+        break;
+    }
+    parent = parent.parentNode;
+}
+```
+
+### 3. CSS Colors
+```css
+/* WRONG - hardcoded */
+color: #2c3e50;
+
+/* RIGHT - use variables */
+color: var(--text-primary);
+```
+
+### 4. Popup Dismissal
+```javascript
+// Primary: scroll dismisses popup
+window.addEventListener('scroll', () => {
+    popup.classList.remove('active');
+    speechService.stop();
+});
+
+// Secondary: click outside content
+popup.addEventListener('click', (e) => {
+    if (e.target === popup) {
+        popup.classList.remove('active');
+        speechService.stop();
+    }
+});
+```
+
+### 5. FileReader over Modern APIs
+```javascript
+// WRONG - not supported in iOS 12
+const buffer = await file.arrayBuffer();
+
+// RIGHT - use FileReader
+const buffer = await new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target.result);
+    reader.onerror = reject;
+    reader.readAsArrayBuffer(file);
+});
+```
+
+---
+
+## Common Pitfalls
+
+### 1. Speech Not Stopping
+Always call `speechService.stop()` when:
+- Popup closes
+- User scrolls
+- New word is clicked
+
+### 2. Words Not Clickable
+Check if:
+- Element has `dataset.wrapped = 'true'` (already processed)
+- Parent element is being observed by IntersectionObserver
+- Text is not inside excluded elements
+
+### 3. Summary Button Text Becomes Clickable
+The word wrapping exclusion check must traverse up the DOM tree to find `.section-trigger` parents.
+
+### 4. CSS/JS Code Appears in Summaries
+The `divideSections` function must skip text nodes inside `<style>` and `<script>` tags.
+
+### 5. Images Not Loading
+Check all three path variations in `imageDataMap`:
+- Full path: `OEBPS/images/cover.jpg`
+- Filename only: `cover.jpg`
+- With images prefix: `images/cover.jpg`
+
+---
+
+## Testing Guidelines
+
+### Manual Testing Checklist
+
+1. **EPUB Loading**
+   - [ ] Progress bar advances smoothly
+   - [ ] Images display correctly
+   - [ ] CSS styles are applied
+   - [ ] No console errors
+
+2. **Word Interaction**
+   - [ ] Click word → hear pronunciation
+   - [ ] Click word → see definition popup
+   - [ ] Definition includes example sentence
+   - [ ] Punctuation stripped from displayed word
+
+3. **Section Summaries**
+   - [ ] Summary buttons appear every ~1000 words
+   - [ ] Clicking shows "Generating summary..."
+   - [ ] Summary content is relevant to section
+
+4. **UI/UX**
+   - [ ] Scroll hides header (after 100px, going down)
+   - [ ] Scroll dismisses popup
+   - [ ] Dark mode toggle works
+   - [ ] Dark mode persists across refresh
+
+5. **iOS 12 Specific**
+   - [ ] Test on actual iPad mini 3 or iOS 12 simulator
+   - [ ] No JavaScript errors in console
+   - [ ] Touch interactions responsive
+
+---
+
+## External Dependencies
+
+| Dependency | CDN URL | Purpose |
+|------------|---------|---------|
+| JSZip 3.10.1 | `cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js` | EPUB unzipping |
+| Bookerly Font | `fonts.cdnfonts.com/css/bookerly` | Reading typography |
+
+---
+
+## Line Number Reference (script.js)
+
+| Lines | Function/Section |
+|-------|------------------|
+| 1 | API Key |
+| 3-58 | SpeechService class |
+| 60-61 | Speech service instance |
+| 63-75 | Global variables & DOM refs |
+| 77-101 | Dark mode functions |
+| 108-157 | Lazy text wrapping (IntersectionObserver) |
+| 159-298 | EPUB processing |
+| 300-324 | callAI() function |
+| 326-377 | getWordDefinition() |
+| 379-387 | getSectionSummary() |
+| 389-451 | divideSections() |
+| 453-478 | handleWordClick() |
+| 480-487 | handleSectionSummary() |
+| 489-495 | Popup click-outside handler |
+| 497-511 | Scroll persistence |
+| 513-530 | Scroll event handler |
+| 532-538 | File input handler |

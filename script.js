@@ -1,5 +1,65 @@
 const MISTRAL_API_KEY = 'UyFZtjZY3r5aNe1th2qtx6IBLynCc0ai'; // Replace with your actual API key
 
+// SpeechService class using Web Speech API
+var SpeechService = (function() {
+    function SpeechService() {
+        this.isSpeaking = false;
+        this.speechRate = 1.0;
+        this.currentUtterance = null;
+    }
+
+    SpeechService.prototype.speak = function(text, onEndCallback) {
+        var self = this;
+
+        // Stop any current speech
+        this.stop();
+
+        if (!window.speechSynthesis) {
+            console.error('Web Speech API not supported');
+            return;
+        }
+
+        this.isSpeaking = true;
+        var utterance = new SpeechSynthesisUtterance(text);
+        utterance.lang = 'en';
+        utterance.rate = this.speechRate;
+        this.currentUtterance = utterance;
+
+        utterance.onend = function() {
+            self.isSpeaking = false;
+            self.currentUtterance = null;
+            if (onEndCallback) {
+                onEndCallback();
+            }
+        };
+
+        utterance.onerror = function(event) {
+            console.error('Speech error:', event.error);
+            self.isSpeaking = false;
+            self.currentUtterance = null;
+        };
+
+        window.speechSynthesis.speak(utterance);
+    };
+
+    SpeechService.prototype.stop = function() {
+        if (window.speechSynthesis) {
+            window.speechSynthesis.cancel();
+        }
+        this.isSpeaking = false;
+        this.currentUtterance = null;
+    };
+
+    SpeechService.prototype.setSpeechRate = function(rate) {
+        this.speechRate = Math.max(0.5, Math.min(2.0, rate));
+    };
+
+    return SpeechService;
+})();
+
+// Initialize speech service
+var speechService = new SpeechService();
+
 const WORD_THRESHOLD = 1000;
 let isBookLoaded = false;
 let currentBookName = '';
@@ -395,20 +455,23 @@ async function handleWordClick(e) {
     const word = e.target.textContent.trim();
 
     // Validate that the word is not empty or just punctuation
-    if (!word || word.replace(/[^\w'-]/g, '').length < 2) {
+    const cleanWord = word.replace(/[^\w'-]/g, '');
+    if (!cleanWord || cleanWord.length < 2) {
         return; // Don't open popup for invalid words
     }
+
+    // Speak the word immediately
+    speechService.speak(cleanWord);
 
     popupContent.innerHTML = '<div class="loading">Loading definition...</div>';
     popup.classList.add('active');
 
     const result = await getWordDefinition(word);
-    const cleanDisplay = word.replace(/[^\w'-\s]/g, '');
 
-    let html = `<h3>${cleanDisplay}</h3>`;
-    html += `<p class="definition">${result.definition}</p>`;
+    let html = '<h3>' + cleanWord + '</h3>';
+    html += '<p class="definition">' + result.definition + '</p>';
     if (result.example) {
-        html += `<p class="example"><em>${result.example}</em></p>`;
+        html += '<p class="example"><em>' + result.example + '</em></p>';
     }
 
     popupContent.innerHTML = html;
@@ -420,13 +483,14 @@ async function handleSectionSummary(e) {
     popup.classList.add('active');
 
     const summary = await getSectionSummary(text);
-    popupContent.innerHTML = `<h3>Section Summary</h3><p>${summary}</p>`;
+    popupContent.innerHTML = '<h3>Section Summary</h3><p>' + summary + '</p>';
 }
 
 // Close popup when clicking outside content area
 popup.addEventListener('click', (e) => {
     if (e.target === popup) {
         popup.classList.remove('active');
+        speechService.stop();
     }
 });
 
@@ -458,8 +522,9 @@ window.addEventListener('scroll', () => {
     }
     lastScrollY = currentScrollY;
 
-    // Hide popup when scrolling
+    // Hide popup when scrolling and stop speech
     popup.classList.remove('active');
+    speechService.stop();
 
     saveScrollPosition();
 });
