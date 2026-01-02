@@ -8,7 +8,6 @@ const header = document.getElementById('header');
 const content = document.getElementById('content');
 const popup = document.getElementById('popup');
 const popupContent = document.getElementById('popupContent');
-const closePopup = document.getElementById('closePopup');
 const epubInput = document.getElementById('epubInput');
 const loadingBar = document.getElementById('loadingBar');
 const loadingProgress = document.getElementById('loadingProgress');
@@ -424,10 +423,7 @@ async function handleSectionSummary(e) {
     popupContent.innerHTML = `<h3>Section Summary</h3><p>${summary}</p>`;
 }
 
-closePopup.addEventListener('click', () => {
-    popup.classList.remove('active');
-});
-
+// Close popup when clicking outside content area
 popup.addEventListener('click', (e) => {
     if (e.target === popup) {
         popup.classList.remove('active');
