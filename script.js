@@ -341,6 +341,9 @@ window.addEventListener('scroll', () => {
     }
     lastScrollY = currentScrollY;
 
+    // Hide popup when scrolling
+    popup.classList.remove('active');
+
     saveScrollPosition();
 });
 
