@@ -124,16 +124,22 @@ Key mobile optimizations:
 
 ## Important Constraints
 
+- **Target Device: iPad mini 3 running iOS 12** - All code must be compatible with iOS 12 Safari browser (released 2018). Avoid modern ES6+ features not supported in iOS 12.
 - No build process or bundler - direct file editing
 - All dependencies loaded via CDN (JSZip, Bookerly font)
-- FileReader used instead of modern file APIs for compatibility
+- FileReader used instead of modern file APIs for compatibility (iOS 12 requirement)
 - EPUB images/CSS embedded as data URLs/inline styles (no external references)
 - API key intentionally in client code (no backend)
 
 ## Critical Implementation Notes
 
-1. **Word Wrapping Exclusions**: Always check if text nodes are inside `.section-trigger` buttons or `<style>`/`<script>` tags before wrapping
-2. **AI Response Parsing**: Word definitions must handle both labeled ("Definition: ...") and unlabeled formats, always strip markdown
-3. **Popup Dismissal**: Scroll-to-dismiss is primary UX pattern, no close button needed
-4. **Dark Mode Variables**: Always use CSS variables for colors, never hardcoded hex values
-5. **Icon-Only Header**: All header buttons are icon-only (no text), use `aria-label` and `title` for accessibility
+1. **iOS 12 Compatibility**: This project targets iPad mini 3 with iOS 12 Safari. When adding features or refactoring:
+   - Avoid modern APIs not available in iOS 12 (e.g., optional chaining `?.`, nullish coalescing `??`, `async`/`await` in some contexts)
+   - Test CSS features for iOS 12 compatibility (some modern CSS grid/flexbox features may need fallbacks)
+   - Use FileReader API instead of modern file handling APIs
+   - Keep JavaScript ES5/ES6 compatible - avoid ES2019+ features
+2. **Word Wrapping Exclusions**: Always check if text nodes are inside `.section-trigger` buttons or `<style>`/`<script>` tags before wrapping
+3. **AI Response Parsing**: Word definitions must handle both labeled ("Definition: ...") and unlabeled formats, always strip markdown
+4. **Popup Dismissal**: Scroll-to-dismiss is primary UX pattern, no close button needed
+5. **Dark Mode Variables**: Always use CSS variables for colors, never hardcoded hex values
+6. **Icon-Only Header**: All header buttons are icon-only (no text), use `aria-label` and `title` for accessibility
