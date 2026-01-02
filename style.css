@@ -270,6 +270,20 @@ input[type="file"]::file-selector-button {
     color: #34495e;
 }
 
+.popup-content .definition {
+    margin-bottom: 20px;
+    display: block;
+}
+
+.popup-content .example {
+    margin-top: 20px;
+    padding-top: 20px;
+    border-top: 1px solid #ecf0f1;
+    color: #7f8c8d;
+    font-size: 17px;
+    display: block;
+}
+
 .loading {
     text-align: center;
     padding: 40px;

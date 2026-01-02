@@ -234,11 +234,54 @@ async function callAI(prompt, systemPrompt) {
 async function getWordDefinition(word) {
     const cleanWord = word.trim().replace(/[^\w'-]/g, '');
     if (!cleanWord || cleanWord.length < 2) {
-        return 'Please click on a valid word to see its definition.';
+        return { definition: 'Please click on a valid word to see its definition.', example: '' };
     }
-    const prompt = `Define the word "${cleanWord}" in one sentence.`;
-    const systemPrompt = 'You are a helpful dictionary assistant. Provide concise, clear definitions.';
-    return await callAI(prompt, systemPrompt);
+    const prompt = `For the word "${cleanWord}":
+1. Provide a clear, simple definition in one sentence.
+2. Provide a basic example sentence showing how to use this word.
+
+Respond with just the definition on the first line and the example on the second line. Do not include labels like "Definition:" or "Example:". Do not use markdown formatting.`;
+    const systemPrompt = 'You are a helpful English teacher assistant for language learners. Provide clear definitions and practical example sentences in plain text without any labels or markdown.';
+    const response = await callAI(prompt, systemPrompt);
+
+    // Function to strip markdown formatting
+    function stripMarkdown(text) {
+        return text
+            .replace(/\*\*([^*]+)\*\*/g, '$1')  // Remove **bold**
+            .replace(/\*([^*]+)\*/g, '$1')      // Remove *italics*
+            .replace(/_([^_]+)_/g, '$1')        // Remove _italics_
+            .replace(/`([^`]+)`/g, '$1')        // Remove `code`
+            .trim();
+    }
+
+    // Parse the response
+    let definition = '';
+    let example = '';
+
+    // Try to split by newlines first
+    const lines = response.split('\n').map(line => line.trim()).filter(line => line);
+
+    // Check if response has labels
+    const defMatch = response.match(/(?:definition|def):\s*(.+?)(?=\n|example:|$)/is);
+    const exMatch = response.match(/(?:example|ex):\s*(.+?)$/is);
+
+    if (defMatch && exMatch) {
+        // Has labels - extract content after labels
+        definition = stripMarkdown(defMatch[1]);
+        example = stripMarkdown(exMatch[1]);
+    } else if (lines.length >= 2) {
+        // No labels - assume first line is definition, second is example
+        definition = stripMarkdown(lines[0]);
+        example = stripMarkdown(lines[1]);
+    } else if (lines.length === 1) {
+        // Only one line - use as definition
+        definition = stripMarkdown(lines[0]);
+    } else {
+        // Fallback
+        definition = stripMarkdown(response);
+    }
+
+    return { definition, example };
 }
 
 async function getSectionSummary(text) {
@@ -327,9 +370,16 @@ async function handleWordClick(e) {
     popupContent.innerHTML = '<div class="loading">Loading definition...</div>';
     popup.classList.add('active');
 
-    const definition = await getWordDefinition(word);
+    const result = await getWordDefinition(word);
     const cleanDisplay = word.replace(/[^\w'-\s]/g, '');
-    popupContent.innerHTML = `<h3>${cleanDisplay}</h3><p>${definition}</p>`;
+
+    let html = `<h3>${cleanDisplay}</h3>`;
+    html += `<p class="definition">${result.definition}</p>`;
+    if (result.example) {
+        html += `<p class="example"><em>${result.example}</em></p>`;
+    }
+
+    popupContent.innerHTML = html;
 }
 
 async function handleSectionSummary(e) {
