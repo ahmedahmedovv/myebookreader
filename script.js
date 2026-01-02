@@ -30,7 +30,18 @@ function wrapWordsInElement(element) {
     const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null, false);
     let node;
     while (node = walker.nextNode()) {
-        if (node.textContent.trim()) {
+        // Skip text nodes inside section-trigger buttons
+        let parent = node.parentNode;
+        let skipNode = false;
+        while (parent && parent !== element) {
+            if (parent.classList && parent.classList.contains('section-trigger')) {
+                skipNode = true;
+                break;
+            }
+            parent = parent.parentNode;
+        }
+
+        if (!skipNode && node.textContent.trim()) {
             textNodes.push(node);
         }
     }
@@ -165,9 +176,13 @@ async function processEPUB(file) {
 
         loadingProgress.style.width = '90%';
 
-        // Observe all block elements for lazy wrapping
+        // Observe all block elements for lazy wrapping (exclude section triggers)
         const blockElements = content.querySelectorAll('p, div, h1, h2, h3, h4, h5, h6, li');
-        blockElements.forEach(el => observer.observe(el));
+        blockElements.forEach(el => {
+            if (!el.classList.contains('section-trigger')) {
+                observer.observe(el);
+            }
+        });
 
         // Setup section summary handlers
         const summaryTriggers = content.querySelectorAll('.section-trigger');
@@ -217,7 +232,10 @@ async function callAI(prompt, systemPrompt) {
 }
 
 async function getWordDefinition(word) {
-    const cleanWord = word.replace(/[^\w]/g, '');
+    const cleanWord = word.trim().replace(/[^\w'-]/g, '');
+    if (!cleanWord || cleanWord.length < 2) {
+        return 'Please click on a valid word to see its definition.';
+    }
     const prompt = `Define the word "${cleanWord}" in one sentence.`;
     const systemPrompt = 'You are a helpful dictionary assistant. Provide concise, clear definitions.';
     return await callAI(prompt, systemPrompt);
@@ -256,16 +274,29 @@ function divideSections(htmlContent) {
 
     function processNode(node, parent) {
         if (node.nodeType === Node.TEXT_NODE) {
-            const words = node.textContent.split(/\s+/).filter(w => w.trim());
-            wordCount += words.length;
-            sectionText += node.textContent;
+            // Check if this text node is inside a style or script tag
+            let parentElement = node.parentNode;
+            let skipText = false;
+            while (parentElement) {
+                if (parentElement.nodeName === 'STYLE' || parentElement.nodeName === 'SCRIPT') {
+                    skipText = true;
+                    break;
+                }
+                parentElement = parentElement.parentNode;
+            }
+
+            if (!skipText) {
+                const words = node.textContent.split(/\s+/).filter(w => w.trim());
+                wordCount += words.length;
+                sectionText += node.textContent;
+            }
 
             parent.appendChild(node.cloneNode(true));
 
             if (wordCount >= WORD_THRESHOLD) {
-                const trigger = document.createElement('div');
+                const trigger = document.createElement('button');
                 trigger.className = 'section-trigger';
-                trigger.textContent = '✦ ✦ ✦ ✦ ✦';
+                trigger.textContent = 'Summary';
                 trigger.dataset.summaryText = sectionText;
                 parent.appendChild(trigger);
                 wordCount = 0;
@@ -286,12 +317,19 @@ function divideSections(htmlContent) {
 
 // Event Handlers
 async function handleWordClick(e) {
-    const word = e.target.textContent;
+    const word = e.target.textContent.trim();
+
+    // Validate that the word is not empty or just punctuation
+    if (!word || word.replace(/[^\w'-]/g, '').length < 2) {
+        return; // Don't open popup for invalid words
+    }
+
     popupContent.innerHTML = '<div class="loading">Loading definition...</div>';
     popup.classList.add('active');
 
     const definition = await getWordDefinition(word);
-    popupContent.innerHTML = `<h3>${word}</h3><p>${definition}</p>`;
+    const cleanDisplay = word.replace(/[^\w'-\s]/g, '');
+    popupContent.innerHTML = `<h3>${cleanDisplay}</h3><p>${definition}</p>`;
 }
 
 async function handleSectionSummary(e) {
