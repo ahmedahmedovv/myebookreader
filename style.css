@@ -50,26 +50,26 @@ body {
     line-height: 1.8;
     color: var(--text-primary);
     background-color: var(--bg-secondary);
-    padding-top: 80px;
-    padding-top: max(80px, env(safe-area-inset-top));
+    padding-top: 56px;
+    padding-top: max(56px, env(safe-area-inset-top));
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Header Styles */
+/* Header Styles - Minimal Icon Bar */
 header {
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     background: var(--header-bg);
-    color: var(--text-primary);
-    padding: 16px 24px;
-    box-shadow: 0 1px 3px var(--header-shadow);
-    transition: transform 0.3s ease, background-color 0.3s ease;
+    border-bottom: 1px solid var(--border-color);
+    padding: 0 20px;
+    height: 56px;
+    box-shadow: none;
+    transition: transform 0.3s ease, background-color 0.3s ease, border-color 0.3s ease;
     z-index: 1000;
-    backdrop-filter: blur(10px);
 }
 
 header.hidden {
@@ -77,94 +77,68 @@ header.hidden {
 }
 
 .header-content {
-    max-width: 1200px;
+    max-width: 100%;
+    height: 100%;
     margin: 0 auto;
     display: flex;
     justify-content: space-between;
     align-items: center;
-    gap: 20px;
+}
+
+.header-brand {
+    display: flex;
+    align-items: center;
+}
+
+.brand-icon {
+    font-size: 24px;
+    line-height: 1;
+    opacity: 0.9;
 }
 
 .header-actions {
     display: flex;
     align-items: center;
-    gap: 12px;
+    gap: 8px;
 }
 
-h1 {
-    font-size: 20px;
-    font-weight: 500;
-    letter-spacing: -0.2px;
-    color: var(--text-primary);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-}
-
-/* Dark Mode Toggle */
-.dark-mode-toggle {
+/* Icon Buttons */
+.icon-btn {
     background: transparent;
-    border: 1.5px solid var(--border-color);
-    border-radius: 50%;
+    border: none;
+    border-radius: 8px;
     width: 40px;
     height: 40px;
     display: flex;
     align-items: center;
     justify-content: center;
     cursor: pointer;
-    transition: all 0.3s ease;
-    font-size: 18px;
+    transition: all 0.2s ease;
+    font-size: 20px;
     padding: 0;
     touch-action: manipulation;
+    color: var(--text-primary);
 }
 
-.dark-mode-toggle:hover {
-    border-color: var(--accent-primary);
+.icon-btn:hover {
     background-color: var(--summary-hover-bg);
-    transform: scale(1.05);
 }
 
-.dark-mode-toggle:active {
+.icon-btn:active {
+    background-color: var(--word-hover-bg);
     transform: scale(0.95);
 }
 
-.dark-mode-toggle .icon-dark {
+.icon-btn .icon-dark {
     display: none;
 }
 
-body.dark-mode .dark-mode-toggle .icon-light {
+body.dark-mode .icon-btn .icon-light {
     display: none;
 }
 
-body.dark-mode .dark-mode-toggle .icon-dark {
+body.dark-mode .icon-btn .icon-dark {
     display: block;
-}
-
-/* File Input Button */
-input[type="file"] {
-    padding: 10px 20px;
-    background-color: var(--accent-primary);
-    color: white;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    font-size: 14px;
-    transition: all 0.3s ease;
-    min-height: 40px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-    font-weight: 500;
-    touch-action: manipulation;
-}
-
-input[type="file"]:hover {
-    background-color: var(--accent-hover);
-    transform: translateY(-1px);
-}
-
-input[type="file"]:active {
-    transform: translateY(0);
-}
-
-input[type="file"]::file-selector-button {
-    display: none;
 }
 
 /* Loading Bar */
@@ -193,7 +167,7 @@ input[type="file"]::file-selector-button {
     padding-right: max(30px, env(safe-area-inset-right));
     padding-bottom: max(40px, env(safe-area-inset-bottom));
     background-color: var(--bg-primary);
-    min-height: calc(100vh - 80px);
+    min-height: calc(100vh - 56px);
     box-shadow: 0 0 20px var(--header-shadow);
     transition: background-color 0.3s ease;
 }
@@ -383,44 +357,32 @@ input[type="file"]::file-selector-button {
     body {
         font-size: 16px;
         line-height: 1.7;
-        padding-top: 70px;
+        padding-top: 56px;
     }
 
     header {
-        padding: 12px 16px;
+        padding: 0 16px;
+        height: 56px;
     }
 
-    .header-content {
-        flex-direction: column;
-        gap: 12px;
-        text-align: center;
+    .brand-icon {
+        font-size: 22px;
     }
 
-    .header-actions {
-        width: 100%;
-        justify-content: center;
-    }
-
-    h1 {
+    .icon-btn {
+        width: 36px;
+        height: 36px;
         font-size: 18px;
     }
 
-    .dark-mode-toggle {
-        width: 36px;
-        height: 36px;
-        font-size: 16px;
-    }
-
-    input[type="file"] {
-        flex: 1;
-        font-size: 13px;
-        padding: 10px 18px;
+    .header-actions {
+        gap: 4px;
     }
 
     .content {
         padding: 20px 15px;
         box-shadow: none;
-        min-height: calc(100vh - 70px);
+        min-height: calc(100vh - 56px);
     }
 
     .content p {
@@ -477,30 +439,25 @@ input[type="file"]::file-selector-button {
 @media (min-width: 481px) and (max-width: 834px) {
     body {
         font-size: 17px;
-        padding-top: 75px;
+        padding-top: 56px;
     }
 
     header {
-        padding: 14px 20px;
+        padding: 0 18px;
     }
 
-    .header-content {
-        justify-content: space-between;
-        gap: 16px;
+    .brand-icon {
+        font-size: 23px;
     }
 
-    h1 {
+    .icon-btn {
+        width: 38px;
+        height: 38px;
         font-size: 19px;
     }
 
-    .dark-mode-toggle {
-        width: 38px;
-        height: 38px;
-    }
-
-    input[type="file"] {
-        font-size: 13px;
-        padding: 9px 18px;
+    .header-actions {
+        gap: 6px;
     }
 
     .content {
@@ -542,7 +499,7 @@ input[type="file"]::file-selector-button {
 @media (min-width: 835px) and (max-width: 1024px) {
     body {
         font-size: 18px;
-        padding-top: 80px;
+        padding-top: 56px;
     }
 
     .content {

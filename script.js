@@ -13,6 +13,7 @@ const epubInput = document.getElementById('epubInput');
 const loadingBar = document.getElementById('loadingBar');
 const loadingProgress = document.getElementById('loadingProgress');
 const darkModeToggle = document.getElementById('darkModeToggle');
+const uploadBtn = document.getElementById('uploadBtn');
 
 // Dark Mode Functionality
 function initDarkMode() {
@@ -39,6 +40,11 @@ initDarkMode();
 
 // Dark mode toggle button
 darkModeToggle.addEventListener('click', toggleDarkMode);
+
+// Upload button triggers hidden file input
+uploadBtn.addEventListener('click', () => {
+    epubInput.click();
+});
 
 // Lazy Text Wrapping with IntersectionObserver
 const observer = new IntersectionObserver((entries) => {
