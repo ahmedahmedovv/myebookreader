@@ -12,6 +12,33 @@ const closePopup = document.getElementById('closePopup');
 const epubInput = document.getElementById('epubInput');
 const loadingBar = document.getElementById('loadingBar');
 const loadingProgress = document.getElementById('loadingProgress');
+const darkModeToggle = document.getElementById('darkModeToggle');
+
+// Dark Mode Functionality
+function initDarkMode() {
+    // Check for saved preference or default to light mode
+    const savedMode = localStorage.getItem('darkMode');
+    if (savedMode === 'enabled') {
+        document.body.classList.add('dark-mode');
+    }
+}
+
+function toggleDarkMode() {
+    document.body.classList.toggle('dark-mode');
+
+    // Save preference
+    if (document.body.classList.contains('dark-mode')) {
+        localStorage.setItem('darkMode', 'enabled');
+    } else {
+        localStorage.setItem('darkMode', 'disabled');
+    }
+}
+
+// Initialize dark mode on page load
+initDarkMode();
+
+// Dark mode toggle button
+darkModeToggle.addEventListener('click', toggleDarkMode);
 
 // Lazy Text Wrapping with IntersectionObserver
 const observer = new IntersectionObserver((entries) => {

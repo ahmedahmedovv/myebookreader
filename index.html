@@ -14,7 +14,13 @@
     <header id="header">
         <div class="header-content">
             <h1>AI EPUB Reader</h1>
-            <input type="file" id="epubInput" accept=".epub">
+            <div class="header-actions">
+                <button id="darkModeToggle" class="dark-mode-toggle" aria-label="Toggle dark mode">
+                    <span class="icon-light">☀️</span>
+                    <span class="icon-dark">🌙</span>
+                </button>
+                <input type="file" id="epubInput" accept=".epub">
+            </div>
         </div>
         <div id="loadingBar" class="loading-bar">
             <div id="loadingProgress" class="loading-progress"></div>
