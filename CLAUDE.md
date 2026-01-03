@@ -43,6 +43,14 @@ This file provides comprehensive guidance to Claude Code (claude.ai/code) when w
 
 ---
 
+## UI Preferences
+
+- Use modern minimal SVG icons (not emojis)
+- Icons should use `currentColor` for theme compatibility
+- Keep UI clean and minimal
+
+---
+
 ## Target Device & Compatibility
 
 ### Primary Target: iPad mini 3 with iOS 12 Safari
@@ -113,10 +121,10 @@ Then open: `http://localhost:8000`
 ## File Structure
 
 ```
-107/
-├── index.html      # Main HTML (44 lines)
-├── script.js       # All JavaScript logic (539 lines)
-├── style.css       # All styles (480 lines)
+myebookreader/
+├── index.html      # Main HTML
+├── script.js       # All JavaScript logic
+├── style.css       # All styles
 └── CLAUDE.md       # This documentation
 ```
 
@@ -125,8 +133,8 @@ Then open: `http://localhost:8000`
 <body>
     <header id="header">           <!-- Fixed 56px icon bar -->
         <div class="header-content">
-            <div class="header-brand">   <!-- 📖 logo -->
-            <div class="header-actions"> <!-- 📁 upload, ☀️🌙 dark mode -->
+            <div class="header-brand">   <!-- Book SVG icon -->
+            <div class="header-actions"> <!-- Upload SVG, Sun/Moon SVG toggle -->
         </div>
         <input type="file" id="epubInput" hidden>
         <div id="loadingBar">      <!-- Progress bar -->
@@ -135,6 +143,7 @@ Then open: `http://localhost:8000`
     <main id="content"></main>     <!-- EPUB content renders here -->
 
     <div id="popup">               <!-- Bottom sheet for definitions -->
+        <div class="popup-handle"> <!-- Drag indicator pill -->
         <div id="popupContent">
     </div>
 </body>
@@ -390,6 +399,7 @@ body.dark-mode {
 | `.section-trigger` | Summary buttons | Between sections |
 | `.icon-btn` | Header buttons | Header |
 | `.popup` | Bottom sheet container | Fixed bottom |
+| `.popup-handle` | Bottom sheet drag indicator | Popup |
 | `.popup-content` | Inner popup content | Inside popup |
 | `.loading` | Loading state text | Popup |
 
@@ -651,26 +661,3 @@ Check all three path variations in `imageDataMap`:
 | JSZip 3.10.1 | `cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js` | EPUB unzipping |
 | Bookerly Font | `fonts.cdnfonts.com/css/bookerly` | Reading typography |
 
----
-
-## Line Number Reference (script.js)
-
-| Lines | Function/Section |
-|-------|------------------|
-| 1 | API Key |
-| 3-58 | SpeechService class |
-| 60-61 | Speech service instance |
-| 63-75 | Global variables & DOM refs |
-| 77-101 | Dark mode functions |
-| 108-157 | Lazy text wrapping (IntersectionObserver) |
-| 159-298 | EPUB processing |
-| 300-324 | callAI() function |
-| 326-377 | getWordDefinition() |
-| 379-387 | getSectionSummary() |
-| 389-451 | divideSections() |
-| 453-478 | handleWordClick() |
-| 480-487 | handleSectionSummary() |
-| 489-495 | Popup click-outside handler |
-| 497-511 | Scroll persistence |
-| 513-530 | Scroll event handler |
-| 532-538 | File input handler |
