@@ -283,10 +283,18 @@ body.dark-mode .icon-btn .icon-dark {
     transform: translateY(0);
 }
 
+.popup-handle {
+    width: 36px;
+    height: 4px;
+    background-color: var(--border-color);
+    border-radius: 2px;
+    margin: 12px auto 0;
+}
+
 .popup-content {
-    padding: 35px 30px;
+    padding: 24px 30px 35px;
     overflow-y: auto;
-    max-height: 70vh;
+    max-height: calc(70vh - 16px);
 }
 
 .popup-content h3 {
@@ -391,8 +399,8 @@ body.dark-mode .icon-btn .icon-dark {
     }
 
     .popup-content {
-        padding: 25px 20px;
-        max-height: 80vh;
+        padding: 20px 20px 25px;
+        max-height: calc(80vh - 16px);
     }
 
     .popup-content h3 {
@@ -462,8 +470,8 @@ body.dark-mode .icon-btn .icon-dark {
     }
 
     .popup-content {
-        padding: 30px 25px;
-        max-height: 75vh;
+        padding: 20px 25px 30px;
+        max-height: calc(75vh - 16px);
     }
 
     .popup-content h3 {
