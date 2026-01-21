@@ -706,13 +706,16 @@ function copyWordsToClipboard() {
         return item.word + '\t' + (item.definition || '') + '\t' + (item.example || '');
     }).join('\n');
 
+    // Save scroll position before focus changes it
+    var scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+
     // iOS 12 compatible clipboard method
     var textarea = document.createElement('textarea');
     textarea.value = text;
     textarea.setAttribute('readonly', '');
     textarea.style.position = 'absolute';
     textarea.style.left = '-9999px';
-    textarea.style.top = '0';
+    textarea.style.top = scrollTop + 'px';
     document.body.appendChild(textarea);
 
     // iOS specific: use setSelectionRange
@@ -727,6 +730,9 @@ function copyWordsToClipboard() {
     }
 
     document.body.removeChild(textarea);
+
+    // Restore scroll position (iOS Safari may have moved it)
+    window.scrollTo(0, scrollTop);
 
     if (success) {
         showToast('Copied ' + saved.length + ' words! Paste into Anki or Quizlet.');
