@@ -793,8 +793,8 @@ function showToast(message) {
             if (toast.parentNode) {
                 toast.parentNode.removeChild(toast);
             }
-        }, 300);
-    }, 2500);
+        }, 100);
+    }, 500);
 }
 
 // Event listeners for saved words
