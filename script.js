@@ -74,6 +74,22 @@ const loadingProgress = document.getElementById('loadingProgress');
 const darkModeToggle = document.getElementById('darkModeToggle');
 const uploadBtn = document.getElementById('uploadBtn');
 
+// Saved words elements
+const savedWordsBtn = document.getElementById('savedWordsBtn');
+const wordCountBadge = document.getElementById('wordCount');
+const wordListPanel = document.getElementById('wordListPanel');
+const wordListContent = document.getElementById('wordListContent');
+const wordListCount = document.getElementById('wordListCount');
+const closeWordListBtn = document.getElementById('closeWordListBtn');
+const copyWordsBtn = document.getElementById('copyWordsBtn');
+const exportCsvBtn = document.getElementById('exportCsvBtn');
+const clearWordsBtn = document.getElementById('clearWordsBtn');
+const panelOverlay = document.getElementById('panelOverlay');
+const exportModal = document.getElementById('exportModal');
+const exportTextarea = document.getElementById('exportTextarea');
+const selectAllBtn = document.getElementById('selectAllBtn');
+const closeExportBtn = document.getElementById('closeExportBtn');
+
 // Dark Mode Functionality
 function initDarkMode() {
     // Check for saved preference or default to light mode
@@ -475,6 +491,11 @@ async function handleWordClick(e) {
     }
 
     popupContent.innerHTML = html;
+
+    // Auto-save the word with its definition
+    if (result.definition && result.definition !== 'Please click on a valid word to see its definition.') {
+        saveWord(cleanWord, result.definition, result.example);
+    }
 }
 
 async function handleSectionSummary(e) {
@@ -528,6 +549,277 @@ window.addEventListener('scroll', () => {
 
     saveScrollPosition();
 });
+
+// ========================================
+// Saved Words Functionality
+// ========================================
+
+// Get saved words from localStorage
+function getSavedWords() {
+    try {
+        return JSON.parse(localStorage.getItem('savedWords') || '[]');
+    } catch (e) {
+        return [];
+    }
+}
+
+// Save words to localStorage
+function setSavedWords(words) {
+    localStorage.setItem('savedWords', JSON.stringify(words));
+    updateWordCountBadge();
+}
+
+// Add a word to saved list
+function saveWord(word, definition, example) {
+    var saved = getSavedWords();
+    var lowerWord = word.toLowerCase();
+
+    // Check for duplicates
+    var exists = saved.some(function(item) {
+        return item.word.toLowerCase() === lowerWord;
+    });
+
+    if (!exists) {
+        saved.push({
+            word: word,
+            definition: definition || '',
+            example: example || '',
+            timestamp: Date.now(),
+            bookName: currentBookName || ''
+        });
+        setSavedWords(saved);
+        showToast('Word saved: ' + word);
+    }
+}
+
+// Delete a word from saved list
+function deleteWord(index) {
+    var saved = getSavedWords();
+    if (index >= 0 && index < saved.length) {
+        saved.splice(index, 1);
+        setSavedWords(saved);
+        renderWordList();
+    }
+}
+
+// Clear all saved words
+function clearAllWords() {
+    if (confirm('Delete all saved words? This cannot be undone.')) {
+        setSavedWords([]);
+        renderWordList();
+        showToast('All words cleared');
+    }
+}
+
+// Update the badge count
+function updateWordCountBadge() {
+    var count = getSavedWords().length;
+    if (count > 0) {
+        wordCountBadge.textContent = count > 99 ? '99+' : count;
+        wordCountBadge.style.display = 'flex';
+    } else {
+        wordCountBadge.style.display = 'none';
+    }
+}
+
+// Render the word list panel
+function renderWordList() {
+    var saved = getSavedWords();
+    wordListCount.textContent = '(' + saved.length + ')';
+
+    if (saved.length === 0) {
+        wordListContent.innerHTML =
+            '<div class="word-list-empty">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">' +
+                    '<path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>' +
+                    '<path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>' +
+                '</svg>' +
+                '<p>No words saved yet.<br>Tap any word while reading to save it.</p>' +
+            '</div>';
+        return;
+    }
+
+    var html = '';
+    saved.forEach(function(item, index) {
+        var def = item.definition || '';
+        if (def.length > 100) {
+            def = def.substring(0, 100) + '...';
+        }
+        html +=
+            '<div class="word-item">' +
+                '<div class="word-item-header">' +
+                    '<span class="word-item-word">' + escapeHtml(item.word) + '</span>' +
+                    '<button class="word-item-delete" data-index="' + index + '" aria-label="Delete word">' +
+                        '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">' +
+                            '<line x1="18" y1="6" x2="6" y2="18"></line>' +
+                            '<line x1="6" y1="6" x2="18" y2="18"></line>' +
+                        '</svg>' +
+                    '</button>' +
+                '</div>' +
+                '<p class="word-item-definition">' + escapeHtml(def) + '</p>' +
+            '</div>';
+    });
+    wordListContent.innerHTML = html;
+
+    // Add delete handlers
+    var deleteButtons = wordListContent.querySelectorAll('.word-item-delete');
+    deleteButtons.forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var index = parseInt(this.getAttribute('data-index'), 10);
+            deleteWord(index);
+        });
+    });
+}
+
+// Escape HTML to prevent XSS
+function escapeHtml(text) {
+    var div = document.createElement('div');
+    div.textContent = text;
+    return div.innerHTML;
+}
+
+// Open word list panel
+function openWordListPanel() {
+    renderWordList();
+    wordListPanel.classList.add('active');
+    panelOverlay.classList.add('active');
+}
+
+// Close word list panel
+function closeWordListPanel() {
+    wordListPanel.classList.remove('active');
+    panelOverlay.classList.remove('active');
+}
+
+// Copy words to clipboard (iOS 12 compatible)
+function copyWordsToClipboard() {
+    var saved = getSavedWords();
+
+    if (saved.length === 0) {
+        showToast('No words to copy');
+        return;
+    }
+
+    // Tab-separated format for Anki/Quizlet
+    var text = saved.map(function(item) {
+        return item.word + '\t' + (item.definition || '') + '\t' + (item.example || '');
+    }).join('\n');
+
+    // iOS 12 compatible clipboard method
+    var textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'absolute';
+    textarea.style.left = '-9999px';
+    textarea.style.top = '0';
+    document.body.appendChild(textarea);
+
+    // iOS specific: use setSelectionRange
+    textarea.focus();
+    textarea.setSelectionRange(0, textarea.value.length);
+
+    var success = false;
+    try {
+        success = document.execCommand('copy');
+    } catch (err) {
+        console.error('Copy failed:', err);
+    }
+
+    document.body.removeChild(textarea);
+
+    if (success) {
+        showToast('Copied ' + saved.length + ' words! Paste into Anki or Quizlet.');
+    } else {
+        showToast('Copy failed. Try Export CSV instead.');
+    }
+}
+
+// Show export CSV modal
+function showExportModal() {
+    var saved = getSavedWords();
+
+    if (saved.length === 0) {
+        showToast('No words to export');
+        return;
+    }
+
+    // Generate CSV content
+    var csv = 'Word,Definition,Example\n';
+    saved.forEach(function(item) {
+        csv += '"' + (item.word || '').replace(/"/g, '""') + '",' +
+               '"' + (item.definition || '').replace(/"/g, '""') + '",' +
+               '"' + (item.example || '').replace(/"/g, '""') + '"\n';
+    });
+
+    exportTextarea.value = csv;
+    exportModal.classList.add('active');
+}
+
+// Close export modal
+function closeExportModal() {
+    exportModal.classList.remove('active');
+}
+
+// Select all text in export textarea
+function selectAllExportText() {
+    exportTextarea.focus();
+    exportTextarea.setSelectionRange(0, exportTextarea.value.length);
+    showToast('Text selected. Now copy with Cmd+C or long-press.');
+}
+
+// Show toast notification
+function showToast(message) {
+    // Remove existing toast if any
+    var existingToast = document.querySelector('.toast');
+    if (existingToast) {
+        existingToast.remove();
+    }
+
+    var toast = document.createElement('div');
+    toast.className = 'toast';
+    toast.textContent = message;
+    document.body.appendChild(toast);
+
+    // Trigger animation
+    setTimeout(function() {
+        toast.classList.add('show');
+    }, 10);
+
+    // Auto-hide after 2.5 seconds
+    setTimeout(function() {
+        toast.classList.remove('show');
+        setTimeout(function() {
+            if (toast.parentNode) {
+                toast.parentNode.removeChild(toast);
+            }
+        }, 300);
+    }, 2500);
+}
+
+// Event listeners for saved words
+savedWordsBtn.addEventListener('click', openWordListPanel);
+closeWordListBtn.addEventListener('click', closeWordListPanel);
+panelOverlay.addEventListener('click', closeWordListPanel);
+copyWordsBtn.addEventListener('click', copyWordsToClipboard);
+exportCsvBtn.addEventListener('click', showExportModal);
+clearWordsBtn.addEventListener('click', clearAllWords);
+selectAllBtn.addEventListener('click', selectAllExportText);
+closeExportBtn.addEventListener('click', closeExportModal);
+
+// Close export modal on backdrop click
+exportModal.addEventListener('click', function(e) {
+    if (e.target === exportModal) {
+        closeExportModal();
+    }
+});
+
+// Initialize word count badge on page load
+updateWordCountBadge();
+
+// ========================================
+// File Input Handler
+// ========================================
 
 // File input handler
 epubInput.addEventListener('change', (e) => {

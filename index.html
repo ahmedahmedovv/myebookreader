@@ -22,6 +22,15 @@
                 </svg>
             </div>
             <div class="header-actions">
+                <button id="savedWordsBtn" class="icon-btn" aria-label="Saved words" title="Saved words">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                        <path d="M8 7h8"></path>
+                        <path d="M8 11h6"></path>
+                    </svg>
+                    <span id="wordCount" class="word-count-badge" style="display: none;">0</span>
+                </button>
                 <button id="uploadBtn" class="icon-btn" aria-label="Upload EPUB file" title="Upload EPUB">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
@@ -58,6 +67,38 @@
     <div id="popup" class="popup">
         <div class="popup-handle"></div>
         <div id="popupContent" class="popup-content"></div>
+    </div>
+
+    <div id="panelOverlay" class="panel-overlay"></div>
+
+    <div id="wordListPanel" class="word-list-panel">
+        <div class="word-list-header">
+            <h3>Saved Words <span id="wordListCount">(0)</span></h3>
+            <button id="closeWordListBtn" class="icon-btn" aria-label="Close">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                </svg>
+            </button>
+        </div>
+        <div id="wordListContent" class="word-list-content"></div>
+        <div class="word-list-actions">
+            <button id="copyWordsBtn" class="action-btn primary">Copy All</button>
+            <button id="exportCsvBtn" class="action-btn">Export CSV</button>
+            <button id="clearWordsBtn" class="action-btn danger">Clear</button>
+        </div>
+    </div>
+
+    <div id="exportModal" class="export-modal">
+        <div class="export-modal-content">
+            <h3>Export CSV</h3>
+            <p>Select all and copy, then paste into a spreadsheet or flashcard app:</p>
+            <textarea id="exportTextarea" readonly class="export-textarea"></textarea>
+            <div class="export-actions">
+                <button id="selectAllBtn" class="action-btn primary">Select All</button>
+                <button id="closeExportBtn" class="action-btn">Close</button>
+            </div>
+        </div>
     </div>
 
     <script src="script.js"></script>
