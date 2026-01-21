@@ -771,7 +771,20 @@ function closeExportModal() {
 function selectAllExportText() {
     exportTextarea.focus();
     exportTextarea.setSelectionRange(0, exportTextarea.value.length);
-    showToast('Text selected. Now copy with Cmd+C or long-press.');
+
+    // Auto-copy after selection (iOS 12 compatible)
+    var success = false;
+    try {
+        success = document.execCommand('copy');
+    } catch (err) {
+        console.error('Auto-copy failed:', err);
+    }
+
+    if (success) {
+        showToast('Copied to clipboard!');
+    } else {
+        showToast('Text selected. Now copy with Cmd+C or long-press.');
+    }
 }
 
 // Show toast notification
