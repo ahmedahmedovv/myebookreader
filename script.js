@@ -741,8 +741,92 @@ function copyWordsToClipboard() {
     }
 }
 
-// Show export CSV modal
-function showExportModal() {
+// Detect iOS version (returns 0 if not iOS)
+function getIOSVersion() {
+    var match = navigator.userAgent.match(/OS (\d+)_/i);
+    if (match && match[1]) {
+        return parseInt(match[1], 10);
+    }
+    // Check for iPad on iOS 13+ (reports as Mac)
+    if (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) {
+        return 13; // iOS 13+ iPads report as Mac
+    }
+    return 0; // Not iOS
+}
+
+// Check if file download is supported (not iOS 12 or earlier)
+function canDownloadFiles() {
+    var iosVersion = getIOSVersion();
+    // iOS 12 and earlier don't support download attribute
+    if (iosVersion > 0 && iosVersion < 13) {
+        return false;
+    }
+    return true;
+}
+
+// Generate CSV content from saved words
+function generateCSV() {
+    var saved = getSavedWords();
+    var csv = 'Word,Definition,Example\n';
+    saved.forEach(function(item) {
+        csv += '"' + (item.word || '').replace(/"/g, '""') + '",' +
+               '"' + (item.definition || '').replace(/"/g, '""') + '",' +
+               '"' + (item.example || '').replace(/"/g, '""') + '"\n';
+    });
+    return csv;
+}
+
+// Download CSV file (for modern browsers)
+function downloadCSV(csv, filename) {
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+
+    var link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Clean up the URL object
+    setTimeout(function() {
+        URL.revokeObjectURL(url);
+    }, 100);
+
+    return true;
+}
+
+// Copy CSV to clipboard (iOS 12 compatible fallback)
+function copyCSVToClipboard(csv) {
+    var scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+
+    var textarea = document.createElement('textarea');
+    textarea.value = csv;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'absolute';
+    textarea.style.left = '-9999px';
+    textarea.style.top = scrollTop + 'px';
+    document.body.appendChild(textarea);
+
+    textarea.focus();
+    textarea.setSelectionRange(0, textarea.value.length);
+
+    var success = false;
+    try {
+        success = document.execCommand('copy');
+    } catch (err) {
+        console.error('Copy failed:', err);
+    }
+
+    document.body.removeChild(textarea);
+    window.scrollTo(0, scrollTop);
+
+    return success;
+}
+
+// Export CSV - tries download first, falls back to clipboard
+function exportCSV() {
     var saved = getSavedWords();
 
     if (saved.length === 0) {
@@ -750,14 +834,34 @@ function showExportModal() {
         return;
     }
 
-    // Generate CSV content
-    var csv = 'Word,Definition,Example\n';
-    saved.forEach(function(item) {
-        csv += '"' + (item.word || '').replace(/"/g, '""') + '",' +
-               '"' + (item.definition || '').replace(/"/g, '""') + '",' +
-               '"' + (item.example || '').replace(/"/g, '""') + '"\n';
-    });
+    var csv = generateCSV();
+    var filename = 'saved-words.csv';
 
+    // Add book name to filename if available
+    if (currentBookName) {
+        var bookBase = currentBookName.replace(/\.epub$/i, '').replace(/[^a-zA-Z0-9]/g, '-');
+        filename = bookBase + '-words.csv';
+    }
+
+    if (canDownloadFiles()) {
+        // Modern browser - download file directly
+        downloadCSV(csv, filename);
+        showToast('Downloaded ' + filename);
+    } else {
+        // iOS 12 fallback - copy to clipboard
+        var success = copyCSVToClipboard(csv);
+        if (success) {
+            showToast('CSV copied! Paste into Notes or Sheets.');
+        } else {
+            // Ultimate fallback - show modal
+            showExportModal();
+        }
+    }
+}
+
+// Show export CSV modal (fallback for when copy fails)
+function showExportModal() {
+    var csv = generateCSV();
     exportTextarea.value = csv;
     exportModal.classList.add('active');
 }
@@ -821,7 +925,7 @@ savedWordsBtn.addEventListener('click', openWordListPanel);
 closeWordListBtn.addEventListener('click', closeWordListPanel);
 panelOverlay.addEventListener('click', closeWordListPanel);
 copyWordsBtn.addEventListener('click', copyWordsToClipboard);
-exportCsvBtn.addEventListener('click', showExportModal);
+exportCsvBtn.addEventListener('click', exportCSV);
 clearWordsBtn.addEventListener('click', clearAllWords);
 selectAllBtn.addEventListener('click', selectAllExportText);
 closeExportBtn.addEventListener('click', closeExportModal);

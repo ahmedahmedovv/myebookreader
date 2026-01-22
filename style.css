@@ -863,7 +863,8 @@ html {
     }
 
     .action-btn {
-        padding: 14px 12px;
+        padding: 14px 10px;
+        font-size: 13px;
     }
 
     .export-modal-content {

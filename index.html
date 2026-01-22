@@ -83,8 +83,8 @@
         </div>
         <div id="wordListContent" class="word-list-content"></div>
         <div class="word-list-actions">
-            <button id="copyWordsBtn" class="action-btn primary">Copy All</button>
-            <button id="exportCsvBtn" class="action-btn">Export CSV</button>
+            <button id="copyWordsBtn" class="action-btn" title="Tab-separated for Anki, Quizlet">Copy for Flashcards</button>
+            <button id="exportCsvBtn" class="action-btn primary" title="Download CSV file">Save CSV</button>
             <button id="clearWordsBtn" class="action-btn danger">Clear</button>
         </div>
     </div>
@@ -92,10 +92,10 @@
     <div id="exportModal" class="export-modal">
         <div class="export-modal-content">
             <h3>Export CSV</h3>
-            <p>Copy the CSV below, then paste into a spreadsheet or flashcard app:</p>
+            <p>Select all and copy, then paste into Notes, Sheets, or any app:</p>
             <textarea id="exportTextarea" readonly class="export-textarea"></textarea>
             <div class="export-actions">
-                <button id="selectAllBtn" class="action-btn primary">Copy</button>
+                <button id="selectAllBtn" class="action-btn primary">Select All & Copy</button>
                 <button id="closeExportBtn" class="action-btn">Close</button>
             </div>
         </div>
