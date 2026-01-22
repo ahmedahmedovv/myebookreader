@@ -419,13 +419,13 @@ Open: `http://localhost:8000`
 │   Header    │     Content      │  Popup (Bottom  │   Word List Panel        │
 │   (56px)    │   EPUB renders   │    Sheet)       │   (Slide-in Right)       │
 │  - Words    │   here with      │  Definitions/   │  - Saved words list      │
-│  - Upload   │   clickable      │  Summary        │  - Copy All button       │
-│  - Dark     │   words          │                 │  - Export CSV button     │
+│  - Upload   │   clickable      │  Summary        │  - Copy for Flashcards   │
+│  - Dark     │   words          │                 │  - Save CSV button       │
 │    mode     │                  │                 │  - Clear button          │
 ├─────────────┴──────────────────┴─────────────────┴──────────────────────────┤
 │   Panel Overlay (dims background when word list open)                        │
 ├──────────────────────────────────────────────────────────────────────────────┤
-│   Export Modal (CSV text for manual copy)                                    │
+│   Export Modal (iOS 12 fallback when clipboard fails)                        │
 ├──────────────────────────────────────────────────────────────────────────────┤
 │   Toast Notifications (bottom-center feedback)                               │
 └──────────────────────────────────────────────────────────────────────────────┘
@@ -452,7 +452,7 @@ EPUB File → FileReader → JSZip → DOMParser → Content Area
                           Auto-save to localStorage
                                      │
                                      ▼
-                          Export: Copy to Clipboard / CSV Modal
+                          Export: Download CSV (modern) / Clipboard (iOS 12)
 ```
 
 ### Key Classes/Functions
@@ -465,11 +465,13 @@ EPUB File → FileReader → JSZip → DOMParser → Content Area
 | `divideSections()` | script.js:405-467 | Insert Summary buttons every ~1000 words |
 | `callAI()` | script.js:316-340 | Mistral API wrapper |
 | `handleWordClick()` | script.js:469-498 | Word tap handler + auto-save |
-| `getSavedWords()` | script.js:545-551 | Read saved words from localStorage |
-| `saveWord()` | script.js:558-575 | Add word to saved list |
-| `copyWordsToClipboard()` | script.js:625-655 | iOS 12-safe clipboard copy |
-| `showExportModal()` | script.js:658-676 | Show CSV export modal |
-| `showToast()` | script.js:693-716 | Display toast notification |
+| `getSavedWords()` | script.js:557-564 | Read saved words from localStorage |
+| `saveWord()` | script.js:572-593 | Add word to saved list |
+| `copyWordsToClipboard()` | script.js:695-742 | iOS 12-safe clipboard copy (tab-separated) |
+| `exportCSV()` | script.js:807-832 | **Hybrid export**: download or clipboard |
+| `getIOSVersion()` | script.js:744-755 | Detect iOS version for feature detection |
+| `downloadCSV()` | script.js:770-785 | File download via Blob URL |
+| `showToast()` | script.js:890-917 | Display toast notification |
 
 ---
 
@@ -538,13 +540,14 @@ This feature allows users to automatically save words they look up and export th
            └── See total count
 
 3. EXPORT FOR FLASHCARDS
-   ├── Option A: "Copy All" button
+   ├── Option A: "Copy for Flashcards" button
    │   └── Copies tab-separated text to clipboard
    │       └── Paste directly into Anki/Quizlet import
    │
-   └── Option B: "Export CSV" button
-       └── Opens modal with CSV text
-           └── Select All → Copy → Paste into spreadsheet
+   └── Option B: "Save CSV" button (hybrid approach)
+       ├── Desktop / iOS 13+: Downloads "bookname-words.csv" file
+       └── iOS 12: Copies CSV to clipboard (fallback)
+           └── If copy fails: Shows modal for manual copy
 ```
 
 #### Data Structure
@@ -595,23 +598,24 @@ Word,Definition,Example
 #### Flashcard App Import Instructions
 
 **Anki:**
-1. Tap "Copy All" in the app
+1. Tap "Copy for Flashcards" in the app
 2. In Anki: File → Import
 3. Paste into a text file or use clipboard import add-on
 4. Set field separator: Tab
 5. Map fields: Field 1 → Front, Field 2 → Back, Field 3 → Extra
 
 **Quizlet:**
-1. Tap "Copy All" in the app
+1. Tap "Copy for Flashcards" in the app
 2. In Quizlet: Create Set → Import from Word, Excel, Google Docs, etc.
 3. Paste the copied text
 4. Set "Between term and definition": Tab
 5. Set "Between cards": New line
 
-**Apple Notes / Google Docs:**
-1. Tap "Export CSV" in the app
-2. Select All → Copy
-3. Paste into Notes/Docs for manual card creation
+**Spreadsheet Apps (Excel, Google Sheets, Numbers):**
+1. Tap "Save CSV" in the app
+2. On desktop/iOS 13+: File downloads automatically
+3. On iOS 12: CSV is copied to clipboard, paste into app
+4. Open/import the CSV file in your spreadsheet app
 
 #### iOS 12 Clipboard Implementation
 
@@ -656,13 +660,73 @@ function copyWordsToClipboard() {
 3. `readonly` attribute prevents the keyboard from appearing
 4. Off-screen positioning (`left: -9999px`) hides the textarea
 
-#### Why No Direct File Download?
+#### Hybrid CSV Export (Download + Clipboard Fallback)
 
-iOS Safari has a **long-standing bug** where the `<a download="file.csv">` attribute is ignored. Instead of downloading, Safari:
-- Opens the file as plain text in a new tab
-- Or shows a blank page
+iOS 12 Safari has a **long-standing bug** where the `<a download="file.csv">` attribute is ignored. Instead of downloading, Safari opens files as plain text in a new tab.
 
-**Our Solution:** Show CSV content in a modal where users can manually Select All → Copy → Paste. This works 100% reliably on iOS 12.
+**Our Solution:** A hybrid approach that provides the best experience for each platform:
+
+```
+User clicks "Save CSV"
+       │
+       ▼
+┌─────────────────────────────────────────────────────────┐
+│  getIOSVersion() → Check if iOS 12 or earlier          │
+└─────────────────────────────────────────────────────────┘
+       │
+       ├─── iOS 13+ / Desktop ──→ Download file via Blob URL
+       │                          "bookname-words.csv"
+       │
+       └─── iOS 12 ─────────────→ Copy CSV to clipboard
+                                  │
+                                  └─── If copy fails → Show modal
+```
+
+**Platform Support:**
+
+| Platform | Method | Result |
+|----------|--------|--------|
+| Desktop (Chrome, Firefox, Safari 13+) | Blob + download attribute | File downloads |
+| iOS 13+ | Blob + download attribute | File downloads |
+| iOS 12 (iPad mini 3) | Clipboard copy | CSV copied, toast shown |
+| iOS 12 (copy fails) | Modal fallback | Manual Select All → Copy |
+
+**Implementation:**
+
+```javascript
+// Detect iOS version from user agent
+function getIOSVersion() {
+    var match = navigator.userAgent.match(/OS (\d+)_/i);
+    if (match && match[1]) {
+        return parseInt(match[1], 10);
+    }
+    // iOS 13+ iPads report as Mac
+    if (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) {
+        return 13;
+    }
+    return 0; // Not iOS
+}
+
+// Check if file download is supported
+function canDownloadFiles() {
+    var iosVersion = getIOSVersion();
+    return !(iosVersion > 0 && iosVersion < 13);
+}
+
+// Download CSV using Blob URL (modern browsers)
+function downloadCSV(csv, filename) {
+    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    link.style.display = 'none';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+}
+```
 
 #### DOM Elements
 
@@ -686,18 +750,18 @@ iOS Safari has a **long-standing bug** where the `<a download="file.csv">` attri
         <!-- Rendered word items -->
     </div>
     <div class="word-list-actions">
-        <button id="copyWordsBtn">Copy All</button>
-        <button id="exportCsvBtn">Export CSV</button>
+        <button id="copyWordsBtn">Copy for Flashcards</button>
+        <button id="exportCsvBtn">Save CSV</button>
         <button id="clearWordsBtn">Clear</button>
     </div>
 </div>
 
-<!-- Export Modal -->
+<!-- Export Modal (fallback for iOS 12 when clipboard fails) -->
 <div id="exportModal" class="export-modal">
     <div class="export-modal-content">
         <h3>Export CSV</h3>
         <textarea id="exportTextarea" readonly></textarea>
-        <button id="selectAllBtn">Select All</button>
+        <button id="selectAllBtn">Select All & Copy</button>
         <button id="closeExportBtn">Close</button>
     </div>
 </div>
@@ -737,9 +801,15 @@ iOS Safari has a **long-standing bug** where the `<a download="file.csv">` attri
 | `openWordListPanel()` | none | void | Show panel + overlay |
 | `closeWordListPanel()` | none | void | Hide panel + overlay |
 | `copyWordsToClipboard()` | none | void | Copy tab-separated to clipboard |
-| `showExportModal()` | none | void | Show CSV modal |
+| `getIOSVersion()` | none | Number | Detect iOS version (0 if not iOS) |
+| `canDownloadFiles()` | none | Boolean | Check if download attribute works |
+| `generateCSV()` | none | String | Generate CSV from saved words |
+| `downloadCSV(csv, filename)` | String, String | Boolean | Download file via Blob URL |
+| `copyCSVToClipboard(csv)` | String | Boolean | Copy CSV to clipboard (iOS 12 safe) |
+| `exportCSV()` | none | void | **Main export**: tries download, falls back to clipboard |
+| `showExportModal()` | none | void | Show CSV modal (fallback only) |
 | `closeExportModal()` | none | void | Hide CSV modal |
-| `selectAllExportText()` | none | void | Select all text in textarea |
+| `selectAllExportText()` | none | void | Select all text in textarea + copy |
 | `showToast(message)` | String | void | Show temporary notification |
 | `escapeHtml(text)` | String | String | Escape HTML entities |
 
@@ -970,12 +1040,20 @@ function escapeHtml(text) {
 - [ ] Word list panel opens/closes correctly
 - [ ] Individual word deletion works
 - [ ] Clear all (with confirmation) works
-- [ ] "Copy All" copies tab-separated text to clipboard
-- [ ] "Export CSV" modal opens with correct CSV format
-- [ ] "Select All" selects all text in export textarea
+- [ ] "Copy for Flashcards" copies tab-separated text to clipboard
 - [ ] Toast notifications appear and auto-dismiss
 - [ ] All features work in dark mode
 - [ ] Panel/modal close on overlay tap
+
+### CSV Export Testing (Hybrid Approach)
+
+- [ ] **Desktop/iOS 13+**: "Save CSV" downloads file with correct filename
+- [ ] **Desktop/iOS 13+**: Downloaded CSV has correct format with headers
+- [ ] **iOS 12**: "Save CSV" copies CSV to clipboard (shows toast)
+- [ ] **iOS 12**: If clipboard fails, modal appears as fallback
+- [ ] **iOS 12**: Modal "Select All & Copy" selects and copies text
+- [ ] Filename includes book name (e.g., "mybook-words.csv")
+- [ ] Empty word list shows "No words to export" toast
 
 ### Performance Testing
 
