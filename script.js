@@ -345,7 +345,7 @@ async function getWordDefinition(word) {
         return { definition: 'Please click on a valid word to see its definition.', example: '' };
     }
     const prompt = `For the word "${cleanWord}":
-1. Provide a clear, simple definition in one sentence.
+1. Provide a clear, simple dictionary-style definition in one sentence, but do not mention or repeat the word itself in the definition.
 2. Provide a basic example sentence showing how to use this word.
 
 Respond with just the definition on the first line and the example on the second line. Do not include labels like "Definition:" or "Example:". Do not use markdown formatting.`;
