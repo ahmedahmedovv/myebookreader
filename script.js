@@ -117,8 +117,6 @@ initDarkMode();
 darkModeToggle.addEventListener('click', toggleDarkMode);
 
 // Font Size Functionality
-var fontIncreaseBtn = document.getElementById('fontIncreaseBtn');
-var fontDecreaseBtn = document.getElementById('fontDecreaseBtn');
 var MIN_FONT_SIZE = 14;
 var MAX_FONT_SIZE = 26;
 var FONT_STEP = 2;
@@ -126,17 +124,31 @@ var FONT_STEP = 2;
 function getCurrentFontSize() {
     var saved = localStorage.getItem('fontSize');
     if (saved) {
-        return parseInt(saved, 10);
+        var size = parseInt(saved, 10);
+        if (!isNaN(size)) {
+            return size;
+        }
     }
     return 18; // Default
 }
 
 function setFontSize(size) {
     // Clamp to min/max
-    size = Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, size));
-    // Set directly on body for iOS 12 compatibility (CSS variables update unreliable)
-    document.body.style.fontSize = size + 'px';
-    localStorage.setItem('fontSize', size);
+    if (size < MIN_FONT_SIZE) size = MIN_FONT_SIZE;
+    if (size > MAX_FONT_SIZE) size = MAX_FONT_SIZE;
+
+    // Apply to body
+    if (document.body) {
+        document.body.style.fontSize = size + 'px';
+    }
+
+    // Also apply directly to content element for iOS 12
+    var contentEl = document.getElementById('content');
+    if (contentEl) {
+        contentEl.style.fontSize = size + 'px';
+    }
+
+    localStorage.setItem('fontSize', String(size));
     return size;
 }
 
@@ -162,9 +174,25 @@ function decreaseFontSize() {
 // Initialize font size on page load
 initFontSize();
 
-// Font size button listeners
-fontIncreaseBtn.addEventListener('click', increaseFontSize);
-fontDecreaseBtn.addEventListener('click', decreaseFontSize);
+// Font size button listeners (with null checks for safety)
+(function() {
+    var fontIncreaseBtn = document.getElementById('fontIncreaseBtn');
+    var fontDecreaseBtn = document.getElementById('fontDecreaseBtn');
+
+    if (fontIncreaseBtn) {
+        fontIncreaseBtn.onclick = function(e) {
+            e.preventDefault();
+            increaseFontSize();
+        };
+    }
+
+    if (fontDecreaseBtn) {
+        fontDecreaseBtn.onclick = function(e) {
+            e.preventDefault();
+            decreaseFontSize();
+        };
+    }
+})();
 
 // Upload button triggers hidden file input
 uploadBtn.addEventListener('click', () => {
