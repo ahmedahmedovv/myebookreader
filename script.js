@@ -418,17 +418,10 @@ async function callAI(prompt, systemPrompt) {
 }
 
 async function getWordDefinition(word) {
-    const cleanWord = word.trim().replace(/[^\w'-]/g, '');
+    var cleanWord = word.trim().replace(/[^\w'-]/g, '');
     if (!cleanWord || cleanWord.length < 2) {
         return { definition: 'Please click on a valid word to see its definition.', example: '' };
     }
-    const prompt = `For the word "${cleanWord}":
-1. Provide a clear, simple dictionary-style definition in one sentence, but do not mention or repeat the word itself in the definition.
-2. Provide a basic example sentence showing how to use this word.
-
-Respond with just the definition on the first line and the example on the second line. Do not include labels like "Definition:" or "Example:". Do not use markdown formatting.`;
-    const systemPrompt = 'You are a helpful English teacher assistant for language learners. Provide clear definitions and practical example sentences in plain text without any labels or markdown.';
-    const response = await callAI(prompt, systemPrompt);
 
     // Function to strip markdown formatting
     function stripMarkdown(text) {
@@ -440,34 +433,85 @@ Respond with just the definition on the first line and the example on the second
             .trim();
     }
 
-    // Parse the response
-    let definition = '';
-    let example = '';
+    // Function to parse AI response
+    function parseResponse(response) {
+        var definition = '';
+        var example = '';
 
-    // Try to split by newlines first
-    const lines = response.split('\n').map(line => line.trim()).filter(line => line);
+        var lines = response.split('\n').map(function(line) {
+            return line.trim();
+        }).filter(function(line) {
+            return line;
+        });
 
-    // Check if response has labels
-    const defMatch = response.match(/(?:definition|def):\s*(.+?)(?=\n|example:|$)/is);
-    const exMatch = response.match(/(?:example|ex):\s*(.+?)$/is);
+        // Check if response has labels
+        var defMatch = response.match(/(?:definition|def):\s*(.+?)(?=\n|example:|$)/is);
+        var exMatch = response.match(/(?:example|ex):\s*(.+?)$/is);
 
-    if (defMatch && exMatch) {
-        // Has labels - extract content after labels
-        definition = stripMarkdown(defMatch[1]);
-        example = stripMarkdown(exMatch[1]);
-    } else if (lines.length >= 2) {
-        // No labels - assume first line is definition, second is example
-        definition = stripMarkdown(lines[0]);
-        example = stripMarkdown(lines[1]);
-    } else if (lines.length === 1) {
-        // Only one line - use as definition
-        definition = stripMarkdown(lines[0]);
-    } else {
-        // Fallback
-        definition = stripMarkdown(response);
+        if (defMatch && exMatch) {
+            definition = stripMarkdown(defMatch[1]);
+            example = stripMarkdown(exMatch[1]);
+        } else if (lines.length >= 2) {
+            definition = stripMarkdown(lines[0]);
+            example = stripMarkdown(lines[1]);
+        } else if (lines.length === 1) {
+            definition = stripMarkdown(lines[0]);
+        } else {
+            definition = stripMarkdown(response);
+        }
+
+        return { definition: definition, example: example };
     }
 
-    return { definition, example };
+    // Check if example contains the word (case-insensitive)
+    function exampleContainsWord(example, targetWord) {
+        if (!example) return false;
+        var lowerExample = example.toLowerCase();
+        var lowerWord = targetWord.toLowerCase();
+        // Check for the word with word boundaries
+        var regex = new RegExp('\\b' + lowerWord.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + '\\b', 'i');
+        return regex.test(example);
+    }
+
+    var systemPrompt = 'You are a helpful English teacher assistant for language learners. Provide clear definitions and practical example sentences. The example sentence MUST always include the target word. Use plain text without any labels or markdown.';
+
+    var maxAttempts = 2;
+    var attempt = 0;
+    var result = { definition: '', example: '' };
+
+    while (attempt < maxAttempts) {
+        attempt++;
+
+        var prompt;
+        if (attempt === 1) {
+            prompt = 'For the word "' + cleanWord + '":\n' +
+                '1. Provide a clear, simple dictionary-style definition in one sentence. Do not mention or repeat the word itself in the definition.\n' +
+                '2. Provide an example sentence that MUST contain the exact word "' + cleanWord + '" to show how it is used in context.\n\n' +
+                'Respond with just the definition on the first line and the example on the second line. Do not include labels like "Definition:" or "Example:". Do not use markdown formatting.';
+        } else {
+            // More explicit retry prompt
+            prompt = 'For the word "' + cleanWord + '":\n' +
+                '1. Definition: One sentence explaining the meaning (do NOT include the word "' + cleanWord + '" in the definition).\n' +
+                '2. Example: A sentence that uses the EXACT word "' + cleanWord + '" - this is REQUIRED.\n\n' +
+                'IMPORTANT: The example sentence MUST include "' + cleanWord + '" exactly as written.\n\n' +
+                'Format: Definition on line 1, example on line 2. No labels, no markdown.';
+        }
+
+        var response = await callAI(prompt, systemPrompt);
+        result = parseResponse(response);
+
+        // Check if example contains the word
+        if (exampleContainsWord(result.example, cleanWord)) {
+            break; // Success, exit loop
+        }
+
+        // If last attempt and still no word in example, keep the result anyway
+        if (attempt >= maxAttempts) {
+            console.log('Word "' + cleanWord + '" not found in example after ' + maxAttempts + ' attempts');
+        }
+    }
+
+    return result;
 }
 
 async function getSectionSummary(text) {
