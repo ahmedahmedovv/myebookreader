@@ -24,6 +24,8 @@ This file provides guidance to Claude Code when working with this repository.
    - [Lazy Word Wrapping](#lazy-word-wrapping)
    - [EPUB Resource Resolution](#epub-resource-resolution)
    - [Font Size Controls](#font-size-controls)
+   - [Auto-Reload Last Book](#auto-reload-last-book)
+   - [Word Highlighting](#word-highlighting)
    - [Saved Words & Export](#saved-words--export-feature)
 7. [Styling System](#styling-system)
 8. [API Integration](#api-integration)
@@ -373,11 +375,13 @@ input, textarea, select {
 | Feature | Technology | Description |
 |---------|------------|-------------|
 | Word Pronunciation | Web Speech API | Tap any word to hear it spoken |
-| Word Definitions | Mistral AI API | AI-generated definitions + example sentences |
+| Word Definitions | Mistral AI API | AI-generated definitions + example sentences (with retry) |
 | Section Summaries | Mistral AI API | Auto-generated summaries every ~1000 words |
-| **Saved Words** | localStorage | Auto-save clicked words for later study |
+| **Saved Words** | localStorage | Toggle save/unsave by clicking words |
+| **Word Highlighting** | CSS | Saved words highlighted yellow throughout book |
 | **Export to Flashcards** | Clipboard / JSON | Copy or export words in flashcard app format |
 | **Font Size Controls** | localStorage | Adjustable text size (14px-26px) with persistence |
+| **Auto-Reload Book** | IndexedDB | Last book auto-loads on page refresh |
 | Dark Mode | CSS Variables + localStorage | System-wide theming with persistence |
 | Reading Progress | Scroll position in localStorage | Resume where you left off |
 
@@ -462,22 +466,21 @@ EPUB File → FileReader → JSZip → DOMParser → Content Area
 
 | Name | Location | Purpose |
 |------|----------|---------|
-| `SpeechService` | script.js:3-58 | Web Speech API wrapper (IIFE pattern) |
-| `setFontSize()` | script.js:135-153 | Apply font size to body and content |
-| `increaseFontSize()` | script.js:160-165 | Increase font by 2px (max 26px) |
-| `decreaseFontSize()` | script.js:167-172 | Decrease font by 2px (min 14px) |
-| `processEPUB()` | script.js | Main EPUB loading pipeline |
-| `wrapWordsInElement()` | script.js | Lazy word span wrapping |
-| `divideSections()` | script.js | Insert Summary buttons every ~1000 words |
-| `callAI()` | script.js | Mistral API wrapper |
-| `handleWordClick()` | script.js | Word tap handler + auto-save |
+| `SpeechService` | script.js | Web Speech API wrapper (IIFE pattern) |
+| `BookStorage` | script.js | IndexedDB wrapper for storing last book |
+| `setFontSize()` | script.js | Apply font size to body and content |
+| `processEPUB()` | script.js | Main EPUB loading pipeline (File or ArrayBuffer) |
+| `wrapWordsInElement()` | script.js | Lazy word span wrapping + highlight saved words |
+| `handleWordClick()` | script.js | Toggle word save/delete on click |
+| `getWordDefinition()` | script.js | AI definition with retry if example missing word |
+| `highlightWordInBook()` | script.js | Add highlight to all instances of a word |
+| `unhighlightWordInBook()` | script.js | Remove highlight from all instances of a word |
+| `isWordSaved()` | script.js | Check if word exists in saved list |
+| `saveWord()` | script.js | Add word to saved list + highlight |
+| `deleteWordByName()` | script.js | Delete word by name + unhighlight |
 | `getSavedWords()` | script.js | Read saved words from localStorage |
-| `saveWord()` | script.js | Add word to saved list |
-| `copyWordsToClipboard()` | script.js | iOS 12-safe clipboard copy (tab-separated) |
 | `generateJSON()` | script.js | Generate flashcard-format JSON from saved words |
 | `exportJSON()` | script.js | **Hybrid export**: download or clipboard |
-| `getIOSVersion()` | script.js | Detect iOS version for feature detection |
-| `downloadJSON()` | script.js | File download via Blob URL |
 | `showToast()` | script.js | Display toast notification |
 
 ---
@@ -602,20 +605,127 @@ function setFontSize(size) {
 }
 ```
 
+### Auto-Reload Last Book
+
+The app automatically saves and reloads the last opened book using IndexedDB.
+
+#### How It Works
+
+```
+Page Load
+    │
+    ▼
+Check IndexedDB for "lastBook"
+    │
+    ├── Found → Load book automatically
+    │              └── Restore scroll position
+    │
+    └── Not found → Show empty page (upload new book)
+```
+
+#### Implementation
+
+```javascript
+var BookStorage = (function() {
+    var DB_NAME = 'EpubReaderDB';
+    var STORE_NAME = 'books';
+
+    function saveBook(fileName, arrayBuffer, callback) {
+        // Store book data in IndexedDB
+        var bookData = {
+            id: 'lastBook',
+            fileName: fileName,
+            data: arrayBuffer,
+            savedAt: Date.now()
+        };
+        // ... store in IndexedDB
+    }
+
+    function loadBook(callback) {
+        // Retrieve last book from IndexedDB
+        // Returns { fileName, data } or null
+    }
+
+    return { saveBook: saveBook, loadBook: loadBook };
+})();
+```
+
+**Why IndexedDB:**
+- localStorage has ~5MB limit, EPUBs can be larger
+- IndexedDB supports binary data (ArrayBuffer) natively
+- Supported on iOS 12
+
+### Word Highlighting
+
+Saved words are highlighted with a yellow background throughout the book.
+
+#### Visual Style
+
+```css
+.word.highlighted {
+    background-color: rgba(241, 196, 15, 0.3);  /* Light mode */
+}
+
+body.dark-mode .word.highlighted {
+    background-color: rgba(241, 196, 15, 0.25); /* Dark mode */
+}
+```
+
+#### Behavior
+
+- Words are highlighted when wrapped (during lazy loading)
+- New words are highlighted immediately when saved
+- Highlights are removed when words are deleted
+- "Clear All" removes all highlights
+
+#### Implementation
+
+```javascript
+// Highlight all instances of a word
+function highlightWordInBook(word) {
+    var cleanWord = word.replace(/[^\w'-]/g, '').toLowerCase();
+    var allWords = document.querySelectorAll('.word');
+    allWords.forEach(function(span) {
+        var spanWord = span.textContent.replace(/[^\w'-]/g, '').toLowerCase();
+        if (spanWord === cleanWord) {
+            span.classList.add('highlighted');
+        }
+    });
+}
+
+// Remove highlight from all instances
+function unhighlightWordInBook(word) {
+    var cleanWord = word.replace(/[^\w'-]/g, '').toLowerCase();
+    var allHighlighted = document.querySelectorAll('.word.highlighted');
+    allHighlighted.forEach(function(span) {
+        var spanWord = span.textContent.replace(/[^\w'-]/g, '').toLowerCase();
+        if (spanWord === cleanWord) {
+            span.classList.remove('highlighted');
+        }
+    });
+}
+```
+
 ---
 
 ### Saved Words & Export Feature
 
-This feature allows users to automatically save words they look up and export them for use in flashcard apps like Anki, Quizlet, Memrise, etc.
+This feature allows users to save words with toggle behavior and export them for use in flashcard apps.
 
 #### User Flow
 
 ```
 1. READ BOOK
-   └── Tap any word
+   └── Tap any word (first time)
        ├── Popup shows definition
        ├── Word is spoken aloud
-       └── Word AUTO-SAVED to localStorage (toast: "Word saved: hello")
+       ├── Word saved to localStorage
+       └── Word highlighted yellow throughout book
+
+   └── Tap same word again (second time)
+       ├── Word removed from saved list
+       ├── Highlight removed
+       └── Toast: "Removed: [word]"
 
 2. VIEW SAVED WORDS
    └── Tap book icon (with badge count) in header
@@ -657,7 +767,9 @@ This feature allows users to automatically save words they look up and export th
 ]
 ```
 
-#### localStorage Keys
+#### Storage
+
+**localStorage Keys:**
 
 | Key | Type | Purpose |
 |-----|------|---------|
@@ -665,6 +777,12 @@ This feature allows users to automatically save words they look up and export th
 | `darkMode` | String | `'enabled'` or `'disabled'` |
 | `fontSize` | String | Font size in pixels (e.g., `'18'`) |
 | `scroll_${filename}` | Number | Reading position per book |
+
+**IndexedDB (EpubReaderDB):**
+
+| Store | Key | Purpose |
+|-------|-----|---------|
+| `books` | `lastBook` | Last opened EPUB file (ArrayBuffer + fileName) |
 
 #### Export Formats
 
@@ -902,6 +1020,8 @@ function downloadJSON(json, filename) {
 
 | Class | Purpose |
 |-------|---------|
+| `.word` | Clickable word span |
+| `.word.highlighted` | Saved word with yellow background |
 | `.font-size-controls` | Container for A/A buttons |
 | `.font-size-btn` | Font size adjustment button |
 | `.font-size-btn.decrease` | Small A button (13px) |
@@ -926,31 +1046,26 @@ function downloadJSON(json, filename) {
 
 | Function | Parameters | Returns | Description |
 |----------|------------|---------|-------------|
+| `BookStorage.saveBook(fileName, arrayBuffer, callback)` | String, ArrayBuffer, Function | void | Save book to IndexedDB |
+| `BookStorage.loadBook(callback)` | Function | void | Load last book from IndexedDB |
 | `getCurrentFontSize()` | none | Number | Get font size from localStorage (default 18) |
 | `setFontSize(size)` | Number | Number | Apply and save font size |
-| `increaseFontSize()` | none | void | Increase font by 2px (max 26) |
-| `decreaseFontSize()` | none | void | Decrease font by 2px (min 14) |
+| `getSavedWordsSet()` | none | Object | Get saved words as lowercase lookup object |
+| `isWordSaved(word)` | String | Boolean | Check if word exists in saved list |
+| `highlightWordInBook(word)` | String | void | Add highlight to all instances of word |
+| `unhighlightWordInBook(word)` | String | void | Remove highlight from all instances |
 | `getSavedWords()` | none | Array | Get all saved words from localStorage |
 | `setSavedWords(words)` | Array | void | Save words array to localStorage |
-| `saveWord(word, definition, example)` | String, String, String | void | Add word if not duplicate |
-| `deleteWord(index)` | Number | void | Remove word at index |
-| `clearAllWords()` | none | void | Clear all (with confirmation) |
-| `updateWordCountBadge()` | none | void | Update badge number |
-| `renderWordList()` | none | void | Render word list HTML |
-| `openWordListPanel()` | none | void | Show panel + overlay |
-| `closeWordListPanel()` | none | void | Hide panel + overlay |
+| `saveWord(word, definition, example)` | String, String, String | void | Add word + highlight if not duplicate |
+| `deleteWordByName(word)` | String | Boolean | Delete word by name + unhighlight |
+| `deleteWord(index)` | Number | void | Remove word at index + unhighlight |
+| `clearAllWords()` | none | void | Clear all + remove all highlights |
+| `handleWordClick(e)` | Event | void | Toggle word save/delete on click |
+| `getWordDefinition(word)` | String | Object | Get AI definition with retry logic |
 | `copyWordsToClipboard()` | none | void | Copy tab-separated to clipboard |
-| `getIOSVersion()` | none | Number | Detect iOS version (0 if not iOS) |
-| `canDownloadFiles()` | none | Boolean | Check if download attribute works |
 | `generateJSON()` | none | String | Generate flashcard JSON from saved words |
-| `downloadJSON(json, filename)` | String, String | Boolean | Download file via Blob URL |
-| `copyJSONToClipboard(json)` | String | Boolean | Copy JSON to clipboard (iOS 12 safe) |
 | `exportJSON()` | none | void | **Main export**: tries download, falls back to clipboard |
-| `showExportModal()` | none | void | Show JSON modal (fallback only) |
-| `closeExportModal()` | none | void | Hide JSON modal |
-| `selectAllExportText()` | none | void | Select all text in textarea + copy |
 | `showToast(message)` | String | void | Show temporary notification |
-| `escapeHtml(text)` | String | String | Escape HTML entities |
 
 ---
 
@@ -1032,6 +1147,32 @@ function stripMarkdown(text) {
         .replace(/_([^_]+)_/g, '$1')
         .replace(/`([^`]+)`/g, '$1')
         .trim();
+}
+```
+
+### Example Sentence Validation
+
+The AI sometimes generates example sentences that don't contain the target word. The app includes retry logic:
+
+```javascript
+// Check if example contains the word (case-insensitive, word boundary)
+function exampleContainsWord(example, targetWord) {
+    if (!example) return false;
+    var regex = new RegExp('\\b' + targetWord + '\\b', 'i');
+    return regex.test(example);
+}
+
+// Retry logic in getWordDefinition()
+var maxAttempts = 2;
+while (attempt < maxAttempts) {
+    var response = await callAI(prompt, systemPrompt);
+    var result = parseResponse(response);
+
+    if (exampleContainsWord(result.example, cleanWord)) {
+        break; // Success
+    }
+    // Retry with more explicit prompt
+    attempt++;
 }
 ```
 
@@ -1213,15 +1354,23 @@ Also ensure CSS media queries don't override dynamic styles with fixed values:
 
 ### Saved Words & Export Testing
 
-- [ ] Word badge count updates when word is saved
-- [ ] Duplicate words are not saved twice
+- [ ] First click on word: saves, highlights, shows popup
+- [ ] Second click on same word: removes, unhighlights, shows toast
+- [ ] Word badge count updates correctly
+- [ ] Saved words highlighted when scrolling to new content
 - [ ] Word list panel opens/closes correctly
-- [ ] Individual word deletion works
-- [ ] Clear all (with confirmation) works
+- [ ] Individual word deletion removes highlight
+- [ ] Clear all removes all highlights
 - [ ] "Copy for Flashcards" copies tab-separated text to clipboard
 - [ ] Toast notifications appear and auto-dismiss
 - [ ] All features work in dark mode
-- [ ] Panel/modal close on overlay tap
+
+### Auto-Reload Testing
+
+- [ ] Book saved to IndexedDB after opening
+- [ ] Page refresh auto-loads last book
+- [ ] Scroll position restored after reload
+- [ ] New book replaces old book in IndexedDB
 
 ### JSON Export Testing (Hybrid Approach)
 
