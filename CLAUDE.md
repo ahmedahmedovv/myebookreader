@@ -392,9 +392,10 @@ input, textarea, select {
 
 ```
 myebookreader/
-├── index.html      # HTML structure (~95 lines)
-├── script.js       # All JavaScript (~740 lines)
-├── style.css       # All styles (~720 lines)
+├── index.html      # HTML structure
+├── script.js       # All JavaScript
+├── style.css       # All styles
+├── example.json    # Sample flashcard export format
 └── CLAUDE.md       # This documentation
 ```
 
@@ -523,6 +524,84 @@ imageDataMap['OEBPS/images/cover.jpg'] = dataUrl;
 imageDataMap['images/cover.jpg'] = dataUrl;
 ```
 
+### Font Size Controls
+
+Adjustable reading font size with persistence across sessions.
+
+#### UI Controls
+
+Two buttons in the header (A/A pattern):
+- **Small A** (`#fontDecreaseBtn`) - Decrease font size
+- **Large A** (`#fontIncreaseBtn`) - Increase font size
+
+#### Configuration
+
+| Setting | Value |
+|---------|-------|
+| Minimum | 14px |
+| Maximum | 26px |
+| Step | 2px |
+| Default | 18px |
+| Levels | 7 (14, 16, 18, 20, 22, 24, 26) |
+
+#### iOS 12 Compatibility
+
+**Important:** CSS custom property updates via `setProperty()` are unreliable on iOS 12. Instead, set `element.style.fontSize` directly:
+
+```javascript
+// ❌ WRONG: CSS variable update (unreliable on iOS 12)
+document.documentElement.style.setProperty('--font-size-base', size + 'px');
+
+// ✅ RIGHT: Direct style assignment
+document.body.style.fontSize = size + 'px';
+document.getElementById('content').style.fontSize = size + 'px';
+```
+
+**CSS Considerations:**
+
+Avoid fixed `font-size` on `.content p` in media queries, as these override inherited sizes and break the font size controls:
+
+```css
+/* ❌ WRONG: Fixed size overrides user preference */
+@media (max-width: 480px) {
+    .content p {
+        font-size: 16px;  /* Blocks font size controls */
+    }
+}
+
+/* ✅ RIGHT: Omit font-size, inherit from parent */
+@media (max-width: 480px) {
+    .content p {
+        text-align: left;
+        margin-bottom: 1.3em;
+    }
+}
+```
+
+#### Implementation
+
+```javascript
+function setFontSize(size) {
+    // Clamp to min/max
+    if (size < MIN_FONT_SIZE) size = MIN_FONT_SIZE;
+    if (size > MAX_FONT_SIZE) size = MAX_FONT_SIZE;
+
+    // Apply to body
+    if (document.body) {
+        document.body.style.fontSize = size + 'px';
+    }
+
+    // Also apply directly to content element for iOS 12
+    var contentEl = document.getElementById('content');
+    if (contentEl) {
+        contentEl.style.fontSize = size + 'px';
+    }
+
+    localStorage.setItem('fontSize', String(size));
+    return size;
+}
+```
+
 ---
 
 ### Saved Words & Export Feature
@@ -550,9 +629,9 @@ This feature allows users to automatically save words they look up and export th
    │   └── Copies tab-separated text to clipboard
    │       └── Paste directly into Anki/Quizlet import
    │
-   └── Option B: "Save CSV" button (hybrid approach)
-       ├── Desktop / iOS 13+: Downloads "bookname-words.csv" file
-       └── iOS 12: Copies CSV to clipboard (fallback)
+   └── Option B: "Save JSON" button (hybrid approach)
+       ├── Desktop / iOS 13+: Downloads "bookname-words.json" file
+       └── iOS 12: Copies JSON to clipboard (fallback)
            └── If copy fails: Shows modal for manual copy
 ```
 
@@ -584,44 +663,75 @@ This feature allows users to automatically save words they look up and export th
 |-----|------|---------|
 | `savedWords` | JSON Array | All saved words with definitions |
 | `darkMode` | String | `'enabled'` or `'disabled'` |
+| `fontSize` | String | Font size in pixels (e.g., `'18'`) |
 | `scroll_${filename}` | Number | Reading position per book |
 
 #### Export Formats
 
-**Tab-Separated (Copy All button):**
+**Tab-Separated (Copy for Flashcards button):**
 ```
 ephemeral	Lasting for a very short time.	The ephemeral beauty of cherry blossoms.
 ubiquitous	Present, appearing, or found everywhere.	Smartphones have become ubiquitous.
 ```
 
-**CSV (Export CSV button):**
-```csv
-Word,Definition,Example
-"ephemeral","Lasting for a very short time.","The ephemeral beauty of cherry blossoms."
-"ubiquitous","Present, appearing, or found everywhere.","Smartphones have become ubiquitous."
+**JSON (Save JSON button) - Flashcard App Format:**
+```json
+{
+  "version": 1,
+  "exportedAt": "2026-02-01T12:00:00.000Z",
+  "language": "English",
+  "languageCode": "en",
+  "cardCount": 2,
+  "cards": [
+    {
+      "w": "ephemeral",
+      "d": "Lasting for a very short time.",
+      "s": "The ephemeral beauty of cherry blossoms.",
+      "int": 1,
+      "due": 0,
+      "ef": 2.5,
+      "n": 0,
+      "lang": "en"
+    }
+  ]
+}
 ```
+
+**JSON Field Reference:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `w` | String | Word |
+| `d` | String | Definition |
+| `s` | String | Example sentence |
+| `int` | Number | Interval (minutes) - default 1 for new cards |
+| `due` | Number | Due timestamp - 0 for unscheduled |
+| `ef` | Number | SM-2 easiness factor - default 2.5 |
+| `n` | Number | Repetition count - 0 for new cards |
+| `lang` | String | Language code |
 
 #### Flashcard App Import Instructions
 
-**Anki:**
+**Anki (Tab-separated):**
 1. Tap "Copy for Flashcards" in the app
 2. In Anki: File → Import
 3. Paste into a text file or use clipboard import add-on
 4. Set field separator: Tab
 5. Map fields: Field 1 → Front, Field 2 → Back, Field 3 → Extra
 
-**Quizlet:**
+**Quizlet (Tab-separated):**
 1. Tap "Copy for Flashcards" in the app
 2. In Quizlet: Create Set → Import from Word, Excel, Google Docs, etc.
 3. Paste the copied text
 4. Set "Between term and definition": Tab
 5. Set "Between cards": New line
 
-**Spreadsheet Apps (Excel, Google Sheets, Numbers):**
-1. Tap "Save CSV" in the app
+**Custom Flashcard Apps (JSON):**
+1. Tap "Save JSON" in the app
 2. On desktop/iOS 13+: File downloads automatically
-3. On iOS 12: CSV is copied to clipboard, paste into app
-4. Open/import the CSV file in your spreadsheet app
+3. On iOS 12: JSON is copied to clipboard
+4. Import the JSON file into your flashcard app
+5. The format includes SM-2 spaced repetition fields
 
 #### iOS 12 Clipboard Implementation
 
@@ -666,14 +776,14 @@ function copyWordsToClipboard() {
 3. `readonly` attribute prevents the keyboard from appearing
 4. Off-screen positioning (`left: -9999px`) hides the textarea
 
-#### Hybrid CSV Export (Download + Clipboard Fallback)
+#### Hybrid JSON Export (Download + Clipboard Fallback)
 
-iOS 12 Safari has a **long-standing bug** where the `<a download="file.csv">` attribute is ignored. Instead of downloading, Safari opens files as plain text in a new tab.
+iOS 12 Safari has a **long-standing bug** where the `<a download="file.json">` attribute is ignored. Instead of downloading, Safari opens files as plain text in a new tab.
 
 **Our Solution:** A hybrid approach that provides the best experience for each platform:
 
 ```
-User clicks "Save CSV"
+User clicks "Save JSON"
        │
        ▼
 ┌─────────────────────────────────────────────────────────┐
@@ -681,9 +791,9 @@ User clicks "Save CSV"
 └─────────────────────────────────────────────────────────┘
        │
        ├─── iOS 13+ / Desktop ──→ Download file via Blob URL
-       │                          "bookname-words.csv"
+       │                          "bookname-words.json"
        │
-       └─── iOS 12 ─────────────→ Copy CSV to clipboard
+       └─── iOS 12 ─────────────→ Copy JSON to clipboard
                                   │
                                   └─── If copy fails → Show modal
 ```
@@ -694,34 +804,43 @@ User clicks "Save CSV"
 |----------|--------|--------|
 | Desktop (Chrome, Firefox, Safari 13+) | Blob + download attribute | File downloads |
 | iOS 13+ | Blob + download attribute | File downloads |
-| iOS 12 (iPad mini 3) | Clipboard copy | CSV copied, toast shown |
+| iOS 12 (iPad mini 3) | Clipboard copy | JSON copied, toast shown |
 | iOS 12 (copy fails) | Modal fallback | Manual Select All → Copy |
 
 **Implementation:**
 
 ```javascript
-// Detect iOS version from user agent
-function getIOSVersion() {
-    var match = navigator.userAgent.match(/OS (\d+)_/i);
-    if (match && match[1]) {
-        return parseInt(match[1], 10);
-    }
-    // iOS 13+ iPads report as Mac
-    if (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1) {
-        return 13;
-    }
-    return 0; // Not iOS
+// Generate JSON in flashcard app format
+function generateJSON() {
+    var saved = getSavedWords();
+    var cards = saved.map(function(item) {
+        return {
+            w: item.word || '',
+            d: item.definition || '',
+            s: item.example || '',
+            int: 1,       // Default interval for new card
+            due: 0,       // Not scheduled yet
+            ef: 2.5,      // Default SM-2 easiness factor
+            n: 0,         // No repetitions yet
+            lang: 'en'
+        };
+    });
+
+    var exportData = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        language: 'English',
+        languageCode: 'en',
+        cardCount: cards.length,
+        cards: cards
+    };
+
+    return JSON.stringify(exportData, null, 2);
 }
 
-// Check if file download is supported
-function canDownloadFiles() {
-    var iosVersion = getIOSVersion();
-    return !(iosVersion > 0 && iosVersion < 13);
-}
-
-// Download CSV using Blob URL (modern browsers)
-function downloadCSV(csv, filename) {
-    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+// Download JSON using Blob URL (modern browsers)
+function downloadJSON(json, filename) {
+    var blob = new Blob([json], { type: 'application/json;charset=utf-8;' });
     var url = URL.createObjectURL(blob);
     var link = document.createElement('a');
     link.setAttribute('href', url);
@@ -737,6 +856,12 @@ function downloadCSV(csv, filename) {
 #### DOM Elements
 
 ```html
+<!-- Font Size Controls -->
+<div class="font-size-controls">
+    <button id="fontDecreaseBtn" class="font-size-btn decrease">A</button>
+    <button id="fontIncreaseBtn" class="font-size-btn increase">A</button>
+</div>
+
 <!-- Header button with badge -->
 <button id="savedWordsBtn" class="icon-btn">
     <svg><!-- book icon --></svg>
@@ -757,7 +882,7 @@ function downloadCSV(csv, filename) {
     </div>
     <div class="word-list-actions">
         <button id="copyWordsBtn">Copy for Flashcards</button>
-        <button id="exportCsvBtn">Save CSV</button>
+        <button id="exportCsvBtn">Save JSON</button>
         <button id="clearWordsBtn">Clear</button>
     </div>
 </div>
@@ -765,7 +890,7 @@ function downloadCSV(csv, filename) {
 <!-- Export Modal (fallback for iOS 12 when clipboard fails) -->
 <div id="exportModal" class="export-modal">
     <div class="export-modal-content">
-        <h3>Export CSV</h3>
+        <h3>Export JSON</h3>
         <textarea id="exportTextarea" readonly></textarea>
         <button id="selectAllBtn">Select All & Copy</button>
         <button id="closeExportBtn">Close</button>
@@ -777,6 +902,10 @@ function downloadCSV(csv, filename) {
 
 | Class | Purpose |
 |-------|---------|
+| `.font-size-controls` | Container for A/A buttons |
+| `.font-size-btn` | Font size adjustment button |
+| `.font-size-btn.decrease` | Small A button (13px) |
+| `.font-size-btn.increase` | Large A button (17px) |
 | `.word-count-badge` | Red badge showing saved word count |
 | `.word-list-panel` | Slide-in panel from right |
 | `.word-list-panel.active` | Panel visible state |
@@ -784,9 +913,9 @@ function downloadCSV(csv, filename) {
 | `.panel-overlay.active` | Overlay visible state |
 | `.word-item` | Individual word entry in list |
 | `.word-item-delete` | Delete button for single word |
-| `.export-modal` | CSV export modal container |
+| `.export-modal` | JSON export modal container |
 | `.export-modal.active` | Modal visible state |
-| `.export-textarea` | Monospace textarea for CSV |
+| `.export-textarea` | Monospace textarea for JSON |
 | `.toast` | Toast notification |
 | `.toast.show` | Toast visible state |
 | `.action-btn` | Action buttons in panel |
@@ -797,6 +926,10 @@ function downloadCSV(csv, filename) {
 
 | Function | Parameters | Returns | Description |
 |----------|------------|---------|-------------|
+| `getCurrentFontSize()` | none | Number | Get font size from localStorage (default 18) |
+| `setFontSize(size)` | Number | Number | Apply and save font size |
+| `increaseFontSize()` | none | void | Increase font by 2px (max 26) |
+| `decreaseFontSize()` | none | void | Decrease font by 2px (min 14) |
 | `getSavedWords()` | none | Array | Get all saved words from localStorage |
 | `setSavedWords(words)` | Array | void | Save words array to localStorage |
 | `saveWord(word, definition, example)` | String, String, String | void | Add word if not duplicate |
@@ -809,12 +942,12 @@ function downloadCSV(csv, filename) {
 | `copyWordsToClipboard()` | none | void | Copy tab-separated to clipboard |
 | `getIOSVersion()` | none | Number | Detect iOS version (0 if not iOS) |
 | `canDownloadFiles()` | none | Boolean | Check if download attribute works |
-| `generateCSV()` | none | String | Generate CSV from saved words |
-| `downloadCSV(csv, filename)` | String, String | Boolean | Download file via Blob URL |
-| `copyCSVToClipboard(csv)` | String | Boolean | Copy CSV to clipboard (iOS 12 safe) |
-| `exportCSV()` | none | void | **Main export**: tries download, falls back to clipboard |
-| `showExportModal()` | none | void | Show CSV modal (fallback only) |
-| `closeExportModal()` | none | void | Hide CSV modal |
+| `generateJSON()` | none | String | Generate flashcard JSON from saved words |
+| `downloadJSON(json, filename)` | String, String | Boolean | Download file via Blob URL |
+| `copyJSONToClipboard(json)` | String | Boolean | Copy JSON to clipboard (iOS 12 safe) |
+| `exportJSON()` | none | void | **Main export**: tries download, falls back to clipboard |
+| `showExportModal()` | none | void | Show JSON modal (fallback only) |
+| `closeExportModal()` | none | void | Hide JSON modal |
 | `selectAllExportText()` | none | void | Select all text in textarea + copy |
 | `showToast(message)` | String | void | Show temporary notification |
 | `escapeHtml(text)` | String | String | Escape HTML entities |
@@ -1014,6 +1147,33 @@ function escapeHtml(text) {
 }
 ```
 
+### Dynamic Styles on iOS 12
+
+CSS custom property updates via JavaScript are unreliable on iOS 12. Use direct style assignment instead:
+
+```javascript
+// ❌ WRONG: CSS variable update (fails silently on iOS 12)
+document.documentElement.style.setProperty('--font-size', size + 'px');
+
+// ✅ RIGHT: Direct style assignment
+document.body.style.fontSize = size + 'px';
+document.getElementById('content').style.fontSize = size + 'px';
+```
+
+Also ensure CSS media queries don't override dynamic styles with fixed values:
+
+```css
+/* ❌ WRONG: Fixed size blocks JavaScript changes */
+@media (max-width: 480px) {
+    .content p { font-size: 16px; }
+}
+
+/* ✅ RIGHT: Omit font-size, inherit from parent */
+@media (max-width: 480px) {
+    .content p { text-align: left; }
+}
+```
+
 ---
 
 ## Testing Checklist
@@ -1027,7 +1187,17 @@ function escapeHtml(text) {
 - [ ] Text-to-speech works
 - [ ] All images load correctly
 - [ ] Dark mode toggle works
+- [ ] Font size controls work (buttons respond to taps)
 - [ ] Progress bar animates smoothly
+
+### Font Size Testing
+
+- [ ] Decrease button reduces font size (min 14px)
+- [ ] Increase button increases font size (max 26px)
+- [ ] Font size applies to body and content
+- [ ] Font size persists after page reload
+- [ ] Font size works on iOS 12 (direct style, not CSS variable)
+- [ ] All text in content area scales (paragraphs, words)
 
 ### Functional Testing
 
@@ -1036,6 +1206,8 @@ function escapeHtml(text) {
 - [ ] Summary buttons appear and work
 - [ ] Scroll position persists across reload
 - [ ] Dark mode preference persists
+- [ ] Font size controls work (A/A buttons)
+- [ ] Font size preference persists across reload
 - [ ] Header hides on scroll down, shows on scroll up
 - [ ] Popup dismisses on scroll or outside tap
 
@@ -1051,15 +1223,16 @@ function escapeHtml(text) {
 - [ ] All features work in dark mode
 - [ ] Panel/modal close on overlay tap
 
-### CSV Export Testing (Hybrid Approach)
+### JSON Export Testing (Hybrid Approach)
 
-- [ ] **Desktop/iOS 13+**: "Save CSV" downloads file with correct filename
-- [ ] **Desktop/iOS 13+**: Downloaded CSV has correct format with headers
-- [ ] **iOS 12**: "Save CSV" copies CSV to clipboard (shows toast)
+- [ ] **Desktop/iOS 13+**: "Save JSON" downloads file with correct filename
+- [ ] **Desktop/iOS 13+**: Downloaded JSON has correct flashcard format
+- [ ] **iOS 12**: "Save JSON" copies JSON to clipboard (shows toast)
 - [ ] **iOS 12**: If clipboard fails, modal appears as fallback
 - [ ] **iOS 12**: Modal "Select All & Copy" selects and copies text
-- [ ] Filename includes book name (e.g., "mybook-words.csv")
+- [ ] Filename includes book name (e.g., "mybook-words.json")
 - [ ] Empty word list shows "No words to export" toast
+- [ ] JSON includes version, exportedAt, cardCount, and cards array
 
 ### Performance Testing
 
@@ -1092,6 +1265,7 @@ function escapeHtml(text) {
 | Aspect ratio | `aspect-ratio: 16/9` | padding-top percentage hack |
 | Selector list | `:is(h1, h2)` | `h1, h2` (repeat styles) |
 | Parent selector | `:has(.child)` | JavaScript |
+| Dynamic font size | CSS variable update | `element.style.fontSize` |
 
 ---
 
