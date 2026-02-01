@@ -260,6 +260,15 @@ body.dark-mode .icon-btn .icon-dark {
     touch-action: manipulation;
 }
 
+.word.highlighted {
+    background-color: rgba(241, 196, 15, 0.3);
+    border-radius: 3px;
+}
+
+body.dark-mode .word.highlighted {
+    background-color: rgba(241, 196, 15, 0.25);
+}
+
 .word:hover {
     color: var(--accent-primary);
     text-decoration: underline;

@@ -309,14 +309,48 @@ const observer = new IntersectionObserver((entries) => {
     rootMargin: '400px'
 });
 
+// Get saved words as lowercase Set for fast lookup
+function getSavedWordsSet() {
+    var saved = getSavedWords();
+    var wordSet = {};
+    saved.forEach(function(item) {
+        if (item.word) {
+            wordSet[item.word.toLowerCase()] = true;
+        }
+    });
+    return wordSet;
+}
+
+// Check if a word is saved (case-insensitive)
+function isWordSaved(word) {
+    var cleanWord = word.replace(/[^\w'-]/g, '').toLowerCase();
+    var saved = getSavedWords();
+    return saved.some(function(item) {
+        return item.word && item.word.toLowerCase() === cleanWord;
+    });
+}
+
+// Highlight all instances of a word in the book
+function highlightWordInBook(word) {
+    var cleanWord = word.replace(/[^\w'-]/g, '').toLowerCase();
+    var allWords = document.querySelectorAll('.word');
+    allWords.forEach(function(span) {
+        var spanWord = span.textContent.replace(/[^\w'-]/g, '').toLowerCase();
+        if (spanWord === cleanWord) {
+            span.classList.add('highlighted');
+        }
+    });
+}
+
 function wrapWordsInElement(element) {
-    const textNodes = [];
-    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null, false);
-    let node;
+    var savedWordsSet = getSavedWordsSet();
+    var textNodes = [];
+    var walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, null, false);
+    var node;
     while (node = walker.nextNode()) {
         // Skip text nodes inside section-trigger buttons
-        let parent = node.parentNode;
-        let skipNode = false;
+        var parent = node.parentNode;
+        var skipNode = false;
         while (parent && parent !== element) {
             if (parent.classList && parent.classList.contains('section-trigger')) {
                 skipNode = true;
@@ -330,14 +364,21 @@ function wrapWordsInElement(element) {
         }
     }
 
-    textNodes.forEach(textNode => {
-        const words = textNode.textContent.split(/(\s+)/);
-        const fragment = document.createDocumentFragment();
-        words.forEach(word => {
+    textNodes.forEach(function(textNode) {
+        var words = textNode.textContent.split(/(\s+)/);
+        var fragment = document.createDocumentFragment();
+        words.forEach(function(word) {
             if (word.match(/\S/)) {
-                const span = document.createElement('span');
+                var span = document.createElement('span');
                 span.textContent = word;
                 span.className = 'word';
+
+                // Check if word is in saved list and highlight
+                var cleanWord = word.replace(/[^\w'-]/g, '').toLowerCase();
+                if (savedWordsSet[cleanWord]) {
+                    span.classList.add('highlighted');
+                }
+
                 span.addEventListener('click', handleWordClick);
                 fragment.appendChild(span);
             } else {
@@ -826,16 +867,35 @@ function saveWord(word, definition, example) {
             bookName: currentBookName || ''
         });
         setSavedWords(saved);
+
+        // Highlight this word throughout the book
+        highlightWordInBook(word);
     }
 }
 
 // Delete a word from saved list
+// Remove highlight from all instances of a word in the book
+function unhighlightWordInBook(word) {
+    var cleanWord = word.replace(/[^\w'-]/g, '').toLowerCase();
+    var allWords = document.querySelectorAll('.word.highlighted');
+    allWords.forEach(function(span) {
+        var spanWord = span.textContent.replace(/[^\w'-]/g, '').toLowerCase();
+        if (spanWord === cleanWord) {
+            span.classList.remove('highlighted');
+        }
+    });
+}
+
 function deleteWord(index) {
     var saved = getSavedWords();
     if (index >= 0 && index < saved.length) {
+        var deletedWord = saved[index].word;
         saved.splice(index, 1);
         setSavedWords(saved);
         renderWordList();
+
+        // Remove highlight from this word throughout the book
+        unhighlightWordInBook(deletedWord);
     }
 }
 
@@ -844,6 +904,13 @@ function clearAllWords() {
     if (confirm('Delete all saved words? This cannot be undone.')) {
         setSavedWords([]);
         renderWordList();
+
+        // Remove all highlights from the book
+        var allHighlighted = document.querySelectorAll('.word.highlighted');
+        allHighlighted.forEach(function(span) {
+            span.classList.remove('highlighted');
+        });
+
         showToast('All words cleared');
     }
 }
