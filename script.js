@@ -60,6 +60,104 @@ var SpeechService = (function() {
 // Initialize speech service
 var speechService = new SpeechService();
 
+// ========================================
+// IndexedDB for storing last book
+// ========================================
+var BookStorage = (function() {
+    var DB_NAME = 'EpubReaderDB';
+    var DB_VERSION = 1;
+    var STORE_NAME = 'books';
+    var db = null;
+
+    function openDB(callback) {
+        if (db) {
+            callback(null, db);
+            return;
+        }
+
+        var request = indexedDB.open(DB_NAME, DB_VERSION);
+
+        request.onerror = function(event) {
+            console.error('IndexedDB error:', event.target.error);
+            callback(event.target.error, null);
+        };
+
+        request.onsuccess = function(event) {
+            db = event.target.result;
+            callback(null, db);
+        };
+
+        request.onupgradeneeded = function(event) {
+            var database = event.target.result;
+            if (!database.objectStoreNames.contains(STORE_NAME)) {
+                database.createObjectStore(STORE_NAME, { keyPath: 'id' });
+            }
+        };
+    }
+
+    function saveBook(fileName, arrayBuffer, callback) {
+        openDB(function(err, database) {
+            if (err) {
+                if (callback) callback(err);
+                return;
+            }
+
+            var transaction = database.transaction([STORE_NAME], 'readwrite');
+            var store = transaction.objectStore(STORE_NAME);
+
+            var bookData = {
+                id: 'lastBook',
+                fileName: fileName,
+                data: arrayBuffer,
+                savedAt: Date.now()
+            };
+
+            var request = store.put(bookData);
+
+            request.onsuccess = function() {
+                if (callback) callback(null);
+            };
+
+            request.onerror = function(event) {
+                console.error('Failed to save book:', event.target.error);
+                if (callback) callback(event.target.error);
+            };
+        });
+    }
+
+    function loadBook(callback) {
+        openDB(function(err, database) {
+            if (err) {
+                callback(err, null);
+                return;
+            }
+
+            var transaction = database.transaction([STORE_NAME], 'readonly');
+            var store = transaction.objectStore(STORE_NAME);
+            var request = store.get('lastBook');
+
+            request.onsuccess = function(event) {
+                var result = event.target.result;
+                if (result) {
+                    callback(null, result);
+                } else {
+                    callback(null, null);
+                }
+            };
+
+            request.onerror = function(event) {
+                console.error('Failed to load book:', event.target.error);
+                callback(event.target.error, null);
+            };
+        });
+    }
+
+    return {
+        saveBook: saveBook,
+        loadBook: loadBook
+    };
+})();
+
 const WORD_THRESHOLD = 1000;
 let isBookLoaded = false;
 let currentBookName = '';
@@ -251,19 +349,37 @@ function wrapWordsInElement(element) {
 }
 
 // EPUB Processing
-async function processEPUB(file) {
-    currentBookName = file.name;
+// Process EPUB from File or ArrayBuffer
+// Usage: processEPUB(file) or processEPUB(arrayBuffer, fileName)
+async function processEPUB(fileOrBuffer, fileName) {
+    var arrayBuffer;
+    var isFromFile = fileOrBuffer instanceof File;
+
+    if (isFromFile) {
+        currentBookName = fileOrBuffer.name;
+        // Read file to ArrayBuffer
+        arrayBuffer = await new Promise(function(resolve, reject) {
+            var reader = new FileReader();
+            reader.onload = function(e) { resolve(e.target.result); };
+            reader.onerror = reject;
+            reader.readAsArrayBuffer(fileOrBuffer);
+        });
+        // Save to IndexedDB for auto-reload
+        BookStorage.saveBook(currentBookName, arrayBuffer, function(err) {
+            if (err) {
+                console.error('Failed to save book to IndexedDB:', err);
+            }
+        });
+    } else {
+        // Already an ArrayBuffer (from IndexedDB)
+        arrayBuffer = fileOrBuffer;
+        currentBookName = fileName || 'book.epub';
+    }
+
     loadingBar.style.display = 'block';
     loadingProgress.style.width = '0%';
 
     try {
-        // Use FileReader for better browser compatibility
-        const arrayBuffer = await new Promise((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = (e) => resolve(e.target.result);
-            reader.onerror = reject;
-            reader.readAsArrayBuffer(file);
-        });
         const zip = await JSZip.loadAsync(arrayBuffer);
 
         loadingProgress.style.width = '20%';
@@ -1088,3 +1204,20 @@ epubInput.addEventListener('change', (e) => {
         processEPUB(file);
     }
 });
+
+// ========================================
+// Auto-load last book on page start
+// ========================================
+(function() {
+    BookStorage.loadBook(function(err, bookData) {
+        if (err) {
+            console.error('Failed to load last book:', err);
+            return;
+        }
+
+        if (bookData && bookData.data && bookData.fileName) {
+            // Auto-load the last book
+            processEPUB(bookData.data, bookData.fileName);
+        }
+    });
+})();
