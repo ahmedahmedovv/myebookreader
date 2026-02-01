@@ -746,30 +746,77 @@ function divideSections(htmlContent) {
 }
 
 // Event Handlers
+// Delete a word by its name (not index)
+function deleteWordByName(word) {
+    var saved = getSavedWords();
+    var lowerWord = word.toLowerCase();
+    var index = -1;
+
+    for (var i = 0; i < saved.length; i++) {
+        if (saved[i].word && saved[i].word.toLowerCase() === lowerWord) {
+            index = i;
+            break;
+        }
+    }
+
+    if (index >= 0) {
+        saved.splice(index, 1);
+        setSavedWords(saved);
+        unhighlightWordInBook(word);
+        return true;
+    }
+    return false;
+}
+
 async function handleWordClick(e) {
-    const word = e.target.textContent.trim();
+    var word = e.target.textContent.trim();
 
     // Validate that the word is not empty or just punctuation
-    const cleanWord = word.replace(/[^\w'-]/g, '');
+    var cleanWord = word.replace(/[^\w'-]/g, '');
     if (!cleanWord || cleanWord.length < 2) {
         return; // Don't open popup for invalid words
+    }
+
+    // Check if word is already saved - if so, delete it (toggle behavior)
+    if (isWordSaved(cleanWord)) {
+        deleteWordByName(cleanWord);
+        showToast('Removed: ' + cleanWord);
+        return; // Don't show popup, just remove
     }
 
     // Speak the word immediately
     speechService.speak(cleanWord);
 
-    popupContent.innerHTML = '<div class="loading">Loading definition...</div>';
+    // Build popup content safely using DOM methods
+    popupContent.textContent = '';
+    var loadingDiv = document.createElement('div');
+    loadingDiv.className = 'loading';
+    loadingDiv.textContent = 'Loading definition...';
+    popupContent.appendChild(loadingDiv);
     popup.classList.add('active');
 
-    const result = await getWordDefinition(word);
+    var result = await getWordDefinition(word);
 
-    let html = '<h3>' + cleanWord + '</h3>';
-    html += '<p class="definition">' + result.definition + '</p>';
+    // Build popup content safely using DOM methods
+    popupContent.textContent = '';
+
+    var heading = document.createElement('h3');
+    heading.textContent = cleanWord;
+    popupContent.appendChild(heading);
+
+    var defPara = document.createElement('p');
+    defPara.className = 'definition';
+    defPara.textContent = result.definition;
+    popupContent.appendChild(defPara);
+
     if (result.example) {
-        html += '<p class="example"><em>' + result.example + '</em></p>';
+        var exPara = document.createElement('p');
+        exPara.className = 'example';
+        var em = document.createElement('em');
+        em.textContent = result.example;
+        exPara.appendChild(em);
+        popupContent.appendChild(exPara);
     }
-
-    popupContent.innerHTML = html;
 
     // Auto-save the word with its definition
     if (result.definition && result.definition !== 'Please click on a valid word to see its definition.') {
