@@ -710,7 +710,6 @@ function saveWord(word, definition, example) {
             bookName: currentBookName || ''
         });
         setSavedWords(saved);
-        showToast('Word saved: ' + word);
     }
 }
 
