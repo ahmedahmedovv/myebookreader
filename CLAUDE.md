@@ -23,6 +23,7 @@ This file provides guidance to Claude Code when working with this repository.
    - [SpeechService](#speechservice-web-speech-api)
    - [Lazy Word Wrapping](#lazy-word-wrapping)
    - [EPUB Resource Resolution](#epub-resource-resolution)
+   - [Font Size Controls](#font-size-controls)
    - [Saved Words & Export](#saved-words--export-feature)
 7. [Styling System](#styling-system)
 8. [API Integration](#api-integration)
@@ -375,7 +376,8 @@ input, textarea, select {
 | Word Definitions | Mistral AI API | AI-generated definitions + example sentences |
 | Section Summaries | Mistral AI API | Auto-generated summaries every ~1000 words |
 | **Saved Words** | localStorage | Auto-save clicked words for later study |
-| **Export to Flashcards** | Clipboard / CSV | Copy or export words to Anki, Quizlet, etc. |
+| **Export to Flashcards** | Clipboard / JSON | Copy or export words in flashcard app format |
+| **Font Size Controls** | localStorage | Adjustable text size (14px-26px) with persistence |
 | Dark Mode | CSS Variables + localStorage | System-wide theming with persistence |
 | Reading Progress | Scroll position in localStorage | Resume where you left off |
 
@@ -418,10 +420,10 @@ Open: `http://localhost:8000`
 ├─────────────┬──────────────────┬─────────────────┬──────────────────────────┤
 │   Header    │     Content      │  Popup (Bottom  │   Word List Panel        │
 │   (56px)    │   EPUB renders   │    Sheet)       │   (Slide-in Right)       │
-│  - Words    │   here with      │  Definitions/   │  - Saved words list      │
-│  - Upload   │   clickable      │  Summary        │  - Copy for Flashcards   │
-│  - Dark     │   words          │                 │  - Save CSV button       │
-│    mode     │                  │                 │  - Clear button          │
+│  - Font A/A │   here with      │  Definitions/   │  - Saved words list      │
+│  - Words    │   clickable      │  Summary        │  - Copy for Flashcards   │
+│  - Upload   │   words          │                 │  - Save JSON button      │
+│  - Dark     │                  │                 │  - Clear button          │
 ├─────────────┴──────────────────┴─────────────────┴──────────────────────────┤
 │   Panel Overlay (dims background when word list open)                        │
 ├──────────────────────────────────────────────────────────────────────────────┤
@@ -452,7 +454,7 @@ EPUB File → FileReader → JSZip → DOMParser → Content Area
                           Auto-save to localStorage
                                      │
                                      ▼
-                          Export: Download CSV (modern) / Clipboard (iOS 12)
+                          Export: Download JSON (modern) / Clipboard (iOS 12)
 ```
 
 ### Key Classes/Functions
@@ -460,18 +462,22 @@ EPUB File → FileReader → JSZip → DOMParser → Content Area
 | Name | Location | Purpose |
 |------|----------|---------|
 | `SpeechService` | script.js:3-58 | Web Speech API wrapper (IIFE pattern) |
-| `processEPUB()` | script.js:175-314 | Main EPUB loading pipeline |
-| `wrapWordsInElement()` | script.js:136-173 | Lazy word span wrapping |
-| `divideSections()` | script.js:405-467 | Insert Summary buttons every ~1000 words |
-| `callAI()` | script.js:316-340 | Mistral API wrapper |
-| `handleWordClick()` | script.js:469-498 | Word tap handler + auto-save |
-| `getSavedWords()` | script.js:557-564 | Read saved words from localStorage |
-| `saveWord()` | script.js:572-593 | Add word to saved list |
-| `copyWordsToClipboard()` | script.js:695-742 | iOS 12-safe clipboard copy (tab-separated) |
-| `exportCSV()` | script.js:807-832 | **Hybrid export**: download or clipboard |
-| `getIOSVersion()` | script.js:744-755 | Detect iOS version for feature detection |
-| `downloadCSV()` | script.js:770-785 | File download via Blob URL |
-| `showToast()` | script.js:890-917 | Display toast notification |
+| `setFontSize()` | script.js:135-153 | Apply font size to body and content |
+| `increaseFontSize()` | script.js:160-165 | Increase font by 2px (max 26px) |
+| `decreaseFontSize()` | script.js:167-172 | Decrease font by 2px (min 14px) |
+| `processEPUB()` | script.js | Main EPUB loading pipeline |
+| `wrapWordsInElement()` | script.js | Lazy word span wrapping |
+| `divideSections()` | script.js | Insert Summary buttons every ~1000 words |
+| `callAI()` | script.js | Mistral API wrapper |
+| `handleWordClick()` | script.js | Word tap handler + auto-save |
+| `getSavedWords()` | script.js | Read saved words from localStorage |
+| `saveWord()` | script.js | Add word to saved list |
+| `copyWordsToClipboard()` | script.js | iOS 12-safe clipboard copy (tab-separated) |
+| `generateJSON()` | script.js | Generate flashcard-format JSON from saved words |
+| `exportJSON()` | script.js | **Hybrid export**: download or clipboard |
+| `getIOSVersion()` | script.js | Detect iOS version for feature detection |
+| `downloadJSON()` | script.js | File download via Blob URL |
+| `showToast()` | script.js | Display toast notification |
 
 ---
 
