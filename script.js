@@ -134,7 +134,8 @@ function getCurrentFontSize() {
 function setFontSize(size) {
     // Clamp to min/max
     size = Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, size));
-    document.documentElement.style.setProperty('--font-size-base', size + 'px');
+    // Set directly on body for iOS 12 compatibility (CSS variables update unreliable)
+    document.body.style.fontSize = size + 'px';
     localStorage.setItem('fontSize', size);
     return size;
 }
