@@ -116,6 +116,55 @@ initDarkMode();
 // Dark mode toggle button
 darkModeToggle.addEventListener('click', toggleDarkMode);
 
+// Font Size Functionality
+var fontIncreaseBtn = document.getElementById('fontIncreaseBtn');
+var fontDecreaseBtn = document.getElementById('fontDecreaseBtn');
+var MIN_FONT_SIZE = 14;
+var MAX_FONT_SIZE = 26;
+var FONT_STEP = 2;
+
+function getCurrentFontSize() {
+    var saved = localStorage.getItem('fontSize');
+    if (saved) {
+        return parseInt(saved, 10);
+    }
+    return 18; // Default
+}
+
+function setFontSize(size) {
+    // Clamp to min/max
+    size = Math.max(MIN_FONT_SIZE, Math.min(MAX_FONT_SIZE, size));
+    document.documentElement.style.setProperty('--font-size-base', size + 'px');
+    localStorage.setItem('fontSize', size);
+    return size;
+}
+
+function initFontSize() {
+    var size = getCurrentFontSize();
+    setFontSize(size);
+}
+
+function increaseFontSize() {
+    var current = getCurrentFontSize();
+    if (current < MAX_FONT_SIZE) {
+        setFontSize(current + FONT_STEP);
+    }
+}
+
+function decreaseFontSize() {
+    var current = getCurrentFontSize();
+    if (current > MIN_FONT_SIZE) {
+        setFontSize(current - FONT_STEP);
+    }
+}
+
+// Initialize font size on page load
+initFontSize();
+
+// Font size button listeners
+fontIncreaseBtn.addEventListener('click', increaseFontSize);
+fontDecreaseBtn.addEventListener('click', decreaseFontSize);
+
 // Upload button triggers hidden file input
 uploadBtn.addEventListener('click', () => {
     epubInput.click();

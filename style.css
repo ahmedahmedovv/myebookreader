@@ -17,6 +17,7 @@
     --popup-shadow: rgba(0, 0, 0, 0.3);
     --word-hover-bg: rgba(52, 152, 219, 0.1);
     --summary-hover-bg: rgba(52, 152, 219, 0.03);
+    --font-size-base: 18px;
 }
 
 body.dark-mode {
@@ -46,7 +47,7 @@ body.dark-mode {
 
 body {
     font-family: 'Bookerly', Georgia, serif;
-    font-size: 18px;
+    font-size: var(--font-size-base);
     line-height: 1.8;
     color: var(--text-primary);
     background-color: var(--bg-secondary);
@@ -144,6 +145,48 @@ body.dark-mode .icon-btn .icon-light {
 
 body.dark-mode .icon-btn .icon-dark {
     display: block;
+}
+
+/* Font Size Controls */
+.font-size-controls {
+    display: flex;
+    align-items: center;
+    margin-right: 4px;
+}
+
+.font-size-btn {
+    background: transparent;
+    border: none;
+    border-radius: 6px;
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    padding: 0;
+    touch-action: manipulation;
+    color: var(--text-primary);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    font-weight: 500;
+}
+
+.font-size-btn.decrease {
+    font-size: 13px;
+}
+
+.font-size-btn.increase {
+    font-size: 17px;
+}
+
+.font-size-btn:hover {
+    background-color: var(--summary-hover-bg);
+}
+
+.font-size-btn:active {
+    background-color: var(--word-hover-bg);
+    transform: scale(0.95);
 }
 
 /* Loading Bar */
