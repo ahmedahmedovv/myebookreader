@@ -764,21 +764,37 @@ function canDownloadFiles() {
     return true;
 }
 
-// Generate CSV content from saved words
-function generateCSV() {
+// Generate JSON content from saved words (matching flashcard app format)
+function generateJSON() {
     var saved = getSavedWords();
-    var csv = 'Word,Definition,Example\n';
-    saved.forEach(function(item) {
-        csv += '"' + (item.word || '').replace(/"/g, '""') + '",' +
-               '"' + (item.definition || '').replace(/"/g, '""') + '",' +
-               '"' + (item.example || '').replace(/"/g, '""') + '"\n';
+    var cards = saved.map(function(item) {
+        return {
+            w: item.word || '',
+            d: item.definition || '',
+            s: item.example || '',
+            int: 1,       // Default interval for new card
+            due: 0,       // Not scheduled yet
+            ef: 2.5,      // Default SM-2 easiness factor
+            n: 0,         // No repetitions yet
+            lang: 'en'    // English
+        };
     });
-    return csv;
+
+    var exportData = {
+        version: 1,
+        exportedAt: new Date().toISOString(),
+        language: 'English',
+        languageCode: 'en',
+        cardCount: cards.length,
+        cards: cards
+    };
+
+    return JSON.stringify(exportData, null, 2);
 }
 
-// Download CSV file (for modern browsers)
-function downloadCSV(csv, filename) {
-    var blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+// Download JSON file (for modern browsers)
+function downloadJSON(json, filename) {
+    var blob = new Blob([json], { type: 'application/json;charset=utf-8;' });
     var url = URL.createObjectURL(blob);
 
     var link = document.createElement('a');
@@ -797,12 +813,12 @@ function downloadCSV(csv, filename) {
     return true;
 }
 
-// Copy CSV to clipboard (iOS 12 compatible fallback)
-function copyCSVToClipboard(csv) {
+// Copy JSON to clipboard (iOS 12 compatible fallback)
+function copyJSONToClipboard(json) {
     var scrollTop = window.pageYOffset || document.documentElement.scrollTop;
 
     var textarea = document.createElement('textarea');
-    textarea.value = csv;
+    textarea.value = json;
     textarea.setAttribute('readonly', '');
     textarea.style.position = 'absolute';
     textarea.style.left = '-9999px';
@@ -825,8 +841,8 @@ function copyCSVToClipboard(csv) {
     return success;
 }
 
-// Export CSV - tries download first, falls back to clipboard
-function exportCSV() {
+// Export JSON - tries download first, falls back to clipboard
+function exportJSON() {
     var saved = getSavedWords();
 
     if (saved.length === 0) {
@@ -834,24 +850,24 @@ function exportCSV() {
         return;
     }
 
-    var csv = generateCSV();
-    var filename = 'saved-words.csv';
+    var json = generateJSON();
+    var filename = 'saved-words.json';
 
     // Add book name to filename if available
     if (currentBookName) {
         var bookBase = currentBookName.replace(/\.epub$/i, '').replace(/[^a-zA-Z0-9]/g, '-');
-        filename = bookBase + '-words.csv';
+        filename = bookBase + '-words.json';
     }
 
     if (canDownloadFiles()) {
         // Modern browser - download file directly
-        downloadCSV(csv, filename);
+        downloadJSON(json, filename);
         showToast('Downloaded ' + filename);
     } else {
         // iOS 12 fallback - copy to clipboard
-        var success = copyCSVToClipboard(csv);
+        var success = copyJSONToClipboard(json);
         if (success) {
-            showToast('CSV copied! Paste into Notes or Sheets.');
+            showToast('JSON copied! Paste into Notes or Files app.');
         } else {
             // Ultimate fallback - show modal
             showExportModal();
@@ -859,10 +875,10 @@ function exportCSV() {
     }
 }
 
-// Show export CSV modal (fallback for when copy fails)
+// Show export JSON modal (fallback for when copy fails)
 function showExportModal() {
-    var csv = generateCSV();
-    exportTextarea.value = csv;
+    var json = generateJSON();
+    exportTextarea.value = json;
     exportModal.classList.add('active');
 }
 
@@ -925,7 +941,7 @@ savedWordsBtn.addEventListener('click', openWordListPanel);
 closeWordListBtn.addEventListener('click', closeWordListPanel);
 panelOverlay.addEventListener('click', closeWordListPanel);
 copyWordsBtn.addEventListener('click', copyWordsToClipboard);
-exportCsvBtn.addEventListener('click', exportCSV);
+exportCsvBtn.addEventListener('click', exportJSON);
 clearWordsBtn.addEventListener('click', clearAllWords);
 selectAllBtn.addEventListener('click', selectAllExportText);
 closeExportBtn.addEventListener('click', closeExportModal);
